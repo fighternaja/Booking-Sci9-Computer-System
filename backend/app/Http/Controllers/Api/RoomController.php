@@ -11,26 +11,43 @@ class RoomController extends Controller
 {
     public function index(): JsonResponse
     {
-        $rooms = Room::where('is_active', true)
-            ->where('room_type', '!=', 'general')
-            ->with(['bookings' => function($query) {
-                $query->where('status', 'approved')
-                        ->where('start_time', '>=', now());
-            }])
-            ->get();
+        try {
+            // Query rooms that are active, excluding 'general' room type
+            $rooms = Room::where('is_active', true)
+                ->where(function($query) {
+                    $query->whereNull('room_type')
+                          ->orWhere('room_type', '!=', 'general');
+                })
+                ->get();
 
-        // แก้ไข URL ของรูปภาพ
-        $rooms->transform(function($room) {
-            if ($room->image) {
-                $room->image = 'storage/' . $room->image;
-            }
-            return $room;
-        });
+            // Transform image URLs
+            $rooms->transform(function($room) {
+                if (!empty($room->image) && strpos($room->image, 'storage/') !== 0) {
+                    $room->image = 'storage/' . $room->image;
+                }
+                return $room;
+            });
 
-        return response()->json([
-            'success' => true,
-            'data' => $rooms
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $rooms->values()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching rooms: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching rooms: ' . $e->getMessage(),
+                'error' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ] : null
+            ], 500);
+        }
     }
 
     public function getRoomTypes(): JsonResponse
@@ -173,65 +190,116 @@ class RoomController extends Controller
 
     public function checkAvailability(Request $request, Room $room): JsonResponse
     {
-        $request->validate([
-            'start_time' => 'required|date|after:now',
-            'end_time' => 'required|date|after:start_time'
-        ]);
+        try {
+            $request->validate([
+                'start_time' => 'required|date',
+                'end_time' => 'required|date|after:start_time',
+                'exclude_booking_id' => 'nullable|exists:bookings,id'
+            ]);
 
-        $startTime = $request->start_time;
-        $endTime = $request->end_time;
+            $startTime = $request->start_time;
+            $endTime = $request->end_time;
+            $excludeBookingId = $request->exclude_booking_id;
 
-        // ตรวจสอบว่ามีการจองที่ทับซ้อนหรือไม่
-        $conflictingBookings = $room->bookings()
-            ->where('status', 'approved')
-            ->where(function($query) use ($startTime, $endTime) {
-                $query->whereBetween('start_time', [$startTime, $endTime])
-                      ->orWhereBetween('end_time', [$startTime, $endTime])
-                      ->orWhere(function($q) use ($startTime, $endTime) {
-                          $q->where('start_time', '<=', $startTime)
-                            ->where('end_time', '>=', $endTime);
-                      });
-            })
-            ->get();
+            // ตรวจสอบว่าเวลาเริ่มต้นไม่เป็นอดีต (ยืดหยุ่นขึ้น - อนุญาตให้ตรวจสอบได้แม้เวลาจะใกล้เคียงกับปัจจุบัน)
+            $startDateTime = new \DateTime($startTime);
+            $now = new \DateTime();
+            $now->modify('-5 minutes'); // อนุญาตให้ตรวจสอบได้แม้เวลาจะผ่านไป 5 นาที
+            
+            if ($startDateTime < $now) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'is_available' => false,
+                        'conflicting_bookings' => [],
+                        'message' => 'เวลาเริ่มต้นต้องเป็นอนาคต'
+                    ]
+                ]);
+            }
 
-        $isAvailable = $conflictingBookings->isEmpty();
+            // ตรวจสอบว่ามีการจองที่ทับซ้อนหรือไม่ (ตรวจสอบทั้ง approved และ pending)
+            $query = $room->bookings()
+                ->whereIn('status', ['approved', 'pending'])
+                ->where(function($query) use ($startTime, $endTime) {
+                    $query->whereBetween('start_time', [$startTime, $endTime])
+                          ->orWhereBetween('end_time', [$startTime, $endTime])
+                          ->orWhere(function($q) use ($startTime, $endTime) {
+                              $q->where('start_time', '<=', $startTime)
+                                ->where('end_time', '>=', $endTime);
+                          });
+                });
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'is_available' => $isAvailable,
-                'conflicting_bookings' => $conflictingBookings->map(function($booking) {
-                    return [
-                        'id' => $booking->id,
-                        'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
-                        'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
-                        'purpose' => $booking->purpose,
-                        'user' => [
-                            'name' => $booking->user->name,
-                            'email' => $booking->user->email
-                        ]
-                    ];
-                })
-            ]
-        ]);
+            // ไม่นับการจองที่ระบุ (สำหรับกรณี reschedule)
+            if ($excludeBookingId) {
+                $query->where('id', '!=', $excludeBookingId);
+            }
+
+            $conflictingBookings = $query->get();
+
+            $isAvailable = $conflictingBookings->isEmpty();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'is_available' => $isAvailable,
+                    'conflicting_bookings' => $conflictingBookings->map(function($booking) {
+                        return [
+                            'id' => $booking->id,
+                            'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
+                            'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
+                            'purpose' => $booking->purpose,
+                            'user' => [
+                                'name' => $booking->user->name,
+                                'email' => $booking->user->email
+                            ]
+                        ];
+                    })
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ข้อมูลไม่ถูกต้อง: ' . implode(', ', $e->errors()['start_time'] ?? []) . ' ' . implode(', ', $e->errors()['end_time'] ?? []),
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error checking availability: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาดในการตรวจสอบความพร้อม: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getBookings(Request $request, Room $room): JsonResponse
     {
         $request->validate([
             'date' => 'nullable|date',
-            'month' => 'nullable|date_format:Y-m'
+            'month' => 'nullable|date_format:Y-m',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date'
         ]);
 
-        $query = $room->bookings()->where('status', 'approved');
-
+        // สำหรับ date parameter ให้ดึงทั้ง approved และ pending
+        // สำหรับ month parameter ให้ดึงเฉพาะ approved
+        $query = $room->bookings();
+        
         if ($request->date) {
             $date = $request->date;
-            $query->whereDate('start_time', $date);
+            $query->whereIn('status', ['approved', 'pending'])
+                  ->whereDate('start_time', $date);
         } elseif ($request->month) {
             $month = $request->month;
             $query->whereYear('start_time', substr($month, 0, 4))
                   ->whereMonth('start_time', substr($month, 5, 2));
+        } elseif ($request->start_date && $request->end_date) {
+            // รองรับ start_date และ end_date สำหรับ calendar
+            $query->whereBetween('start_time', [$request->start_date, $request->end_date]);
         } else {
             // ถ้าไม่ระบุ ให้แสดงการจองในเดือนปัจจุบัน
             $query->whereYear('start_time', now()->year)
@@ -248,6 +316,8 @@ class RoomController extends Controller
                     'start_time' => $booking->start_time->format('Y-m-d H:i:s'),
                     'end_time' => $booking->end_time->format('Y-m-d H:i:s'),
                     'purpose' => $booking->purpose,
+                    'notes' => $booking->notes,
+                    'status' => $booking->status,
                     'user' => [
                         'name' => $booking->user->name,
                         'email' => $booking->user->email

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\NotificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -25,6 +26,7 @@ Route::get('/stats', [StatsController::class, 'index']);
 // Auth routes การจัดการข้อมูลสำหรับการลงทะเบียนและเข้าสู่ระบบ
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/google', [AuthController::class, 'googleLogin']);
 
 // Protected routes การจัดการข้อมูลสำหรับผู้ใช้งาน
 Route::middleware('auth:sanctum')->group(function () {
@@ -36,6 +38,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('bookings', BookingController::class);
     Route::post('/bookings/{booking}/approve', [BookingController::class, 'approve']);
     Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject']);
+    Route::post('/bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+    
+    // Notification routes
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     
     // Admin routes การจัดการข้อมูลสำหรับผู้ดูแลระบบ
     Route::middleware('admin')->group(function () {

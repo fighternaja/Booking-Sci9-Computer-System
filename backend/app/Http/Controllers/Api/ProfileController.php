@@ -12,8 +12,8 @@ class ProfileController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        // แก้ไข URL ของรูปภาพให้เป็น URL เต็ม
-        if ($user->profile_picture) {
+        // แก้ไข URL ของรูปภาพให้เป็น URL เต็ม (เฉพาะไฟล์ที่อัปโหลด ไม่ใช่ URL จาก Google)
+        if ($user->profile_picture && !filter_var($user->profile_picture, FILTER_VALIDATE_URL)) {
             $user->profile_picture = 'storage/' . $user->profile_picture;
         }
         return response()->json($user);
@@ -42,15 +42,17 @@ class ProfileController extends Controller
         }
 
         if($request->hasFile('profile_picture')) {
+            // ถ้าผู้ใช้อัปโหลดรูปใหม่ ให้แทนที่รูปเดิม (ไม่ว่าจะเป็น URL จาก Google หรือไฟล์ที่อัปโหลดมาก่อน)
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $user->id . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('profile_pictures', $filename, 'public');
             $user->profile_picture = $path;
         }
+        // ถ้าไม่มีการอัปโหลดรูปใหม่ ให้คงรูปเดิมไว้ (อาจเป็น URL จาก Google หรือไฟล์ที่อัปโหลดมาก่อน)
         $user->save();
 
-        // แก้ไข URL ของรูปภาพให้เป็น URL เต็ม
-        if ($user->profile_picture) {
+        // แก้ไข URL ของรูปภาพให้เป็น URL เต็ม (เฉพาะไฟล์ที่อัปโหลด ไม่ใช่ URL จาก Google)
+        if ($user->profile_picture && !filter_var($user->profile_picture, FILTER_VALIDATE_URL)) {
             $user->profile_picture = 'storage/' . $user->profile_picture;
         }
 
