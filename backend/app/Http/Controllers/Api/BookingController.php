@@ -49,11 +49,11 @@ class BookingController extends Controller
             ->where('status', 'approved')
             ->where(function($query) use ($request) {
                 $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                      ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                      ->orWhere(function($q) use ($request) {
-                          $q->where('start_time', '<=', $request->start_time)
+                        ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
+                        ->orWhere(function($q) use ($request) {
+                            $q->where('start_time', '<=', $request->start_time)
                             ->where('end_time', '>=', $request->end_time);
-                      });
+                        });
             })
             ->exists();
 

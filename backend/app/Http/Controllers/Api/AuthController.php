@@ -27,7 +27,7 @@ class AuthController extends Controller
             'role' => 'user'
         ]);
 
-        // create a sanctum personal access token
+        // ลงทะเบียนผู้ใช้งานสำเร็จ
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -37,7 +37,7 @@ class AuthController extends Controller
                 'token' => $token,
                 'token_type' => 'Bearer'
             ],
-            'message' => 'User registered successfully'
+            'message' => 'สมัครสมาชิกสำเร็จ'
         ], 201);
     }
 
@@ -46,8 +46,10 @@ class AuthController extends Controller
         try {
             $request->validate([
                 'email' => 'required|email',
-                'password' => 'required'
+                'password' => 'required|string'
             ]);
+
+            $user = User::where('email', $request->email)->firstOrFail();
 
             if (!Auth::attempt($request->only('email', 'password'))) {
                 return response()->json([
@@ -56,9 +58,7 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            $user = User::where('email', $request->email)->firstOrFail();
-            
-            // create a sanctum personal access token
+            // create a sanctum personal access token ตรวจสอบสิทธิ์การเข้าถึง API
             $token = $user->createToken('api-token')->plainTextToken;
 
             return response()->json([
@@ -68,7 +68,7 @@ class AuthController extends Controller
                     'token' => $token,
                     'token_type' => 'Bearer'
                 ],
-                'message' => 'Login successful'
+                'message' => 'เข้าสู่ระบบสำเร็จ'
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -80,7 +80,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        // revoke current access token (if using sanctum)
+        // revoke current access token (if using sanctum) ยกเลิกการเข้าถึง API
         $user = Auth::user();
         if ($user && $request->user()) {
             $request->user()->currentAccessToken()?->delete();
@@ -90,7 +90,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Logged out successfully'
+            'message' => 'ออกจากระบบสำเร็จ'
         ]);
     }
 
@@ -100,7 +100,7 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized'
+                'message' => 'ไม่มีสิทธิ์เข้าถึง'
             ], 401);
         }
 
