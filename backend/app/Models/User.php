@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\AuditLog;
 
 class User extends Authenticatable
 {
@@ -25,7 +26,10 @@ class User extends Authenticatable
         'password',
         'role',
         'profile_picture',
-        'google_id',
+        'is_active',
+        'last_login_at',
+        'suspended_until',
+        'suspension_reason',
     ];
 
     /**
@@ -50,6 +54,9 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'suspended_until' => 'datetime',
+        'is_active' => 'boolean',
         // Note: password is intentionally not auto-hashed here since
         // the controller/seeder already hashes it explicitly.
     ];
@@ -59,8 +66,38 @@ class User extends Authenticatable
         return $this->hasMany(Booking::class);
     }
 
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    public function waitlists()
+    {
+        return $this->hasMany(Waitlist::class);
+    }
+
+    public function bookingTemplates()
+    {
+        return $this->hasMany(BookingTemplate::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';
+    }
+
+    public function isActive()
+    {
+        return $this->is_active && ($this->suspended_until === null || $this->suspended_until->isPast());
+    }
+
+    public function isSuspended()
+    {
+        return $this->suspended_until !== null && $this->suspended_until->isFuture();
     }
 }
