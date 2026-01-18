@@ -101,7 +101,7 @@ class RoomController extends Controller
 
         // แก้ไข URL ของรูปภาพ
         $rooms->transform(function($room) {
-            if ($room->image) {
+            if ($room->image && strpos($room->image, 'storage/') !== 0) {
                 $room->image = 'storage/' . $room->image;
             }
             return $room;
@@ -218,15 +218,31 @@ class RoomController extends Controller
             }
 
             // ตรวจสอบว่ามีการจองที่ทับซ้อนหรือไม่ (ตรวจสอบทั้ง approved และ pending)
+            // ตรวจสอบกรณีที่เวลาทับกันทั้งหมด
             $query = $room->bookings()
                 ->whereIn('status', ['approved', 'pending'])
                 ->where(function($query) use ($startTime, $endTime) {
-                    $query->whereBetween('start_time', [$startTime, $endTime])
-                          ->orWhereBetween('end_time', [$startTime, $endTime])
-                          ->orWhere(function($q) use ($startTime, $endTime) {
-                              $q->where('start_time', '<=', $startTime)
-                                ->where('end_time', '>=', $endTime);
-                          });
+                    $query
+                        // กรณีที่ 1: การจองใหม่เริ่มก่อนการจองเดิมเริ่ม แต่จบระหว่างการจองเดิม
+                        ->where(function($q) use ($startTime, $endTime) {
+                            $q->where('start_time', '<', $startTime)
+                              ->where('end_time', '>', $startTime);
+                        })
+                        // กรณีที่ 2: การจองใหม่เริ่มระหว่างการจองเดิม
+                        ->orWhere(function($q) use ($startTime, $endTime) {
+                            $q->where('start_time', '>=', $startTime)
+                              ->where('start_time', '<', $endTime);
+                        })
+                        // กรณีที่ 3: การจองเดิมครอบคลุมการจองใหม่ทั้งหมด
+                        ->orWhere(function($q) use ($startTime, $endTime) {
+                            $q->where('start_time', '<=', $startTime)
+                              ->where('end_time', '>=', $endTime);
+                        })
+                        // กรณีที่ 4: การจองใหม่ครอบคลุมการจองเดิมทั้งหมด
+                        ->orWhere(function($q) use ($startTime, $endTime) {
+                            $q->where('start_time', '>', $startTime)
+                              ->where('end_time', '<', $endTime);
+                        });
                 });
 
             // ไม่นับการจองที่ระบุ (สำหรับกรณี reschedule)
@@ -286,13 +302,14 @@ class RoomController extends Controller
         ]);
 
         // สำหรับ date parameter ให้ดึงทั้ง approved และ pending
-        // สำหรับ month parameter ให้ดึงเฉพาะ approved
-        $query = $room->bookings();
+        // สำหรับ month parameter ให้ดึงเฉพาะ approved และ pending
+        // ไม่แสดงการจองที่ยกเลิกแล้ว (cancelled) หรือปฏิเสธแล้ว (rejected)
+        $query = $room->bookings()
+            ->whereIn('status', ['approved', 'pending']);
         
         if ($request->date) {
             $date = $request->date;
-            $query->whereIn('status', ['approved', 'pending'])
-                  ->whereDate('start_time', $date);
+            $query->whereDate('start_time', $date);
         } elseif ($request->month) {
             $month = $request->month;
             $query->whereYear('start_time', substr($month, 0, 4))

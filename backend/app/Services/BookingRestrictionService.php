@@ -49,23 +49,6 @@ class BookingRestrictionService
         $start = Carbon::parse($startTime);
         $end = Carbon::parse($endTime);
 
-        // ตรวจสอบช่วงเวลาที่จองได้
-        $bookingStartTime = Setting::get('booking_start_time', '08:00');
-        $bookingEndTime = Setting::get('booking_end_time', '18:00');
-        
-        if ($bookingStartTime && $bookingEndTime) {
-            $allowedStart = Carbon::parse($start->format('Y-m-d') . ' ' . $bookingStartTime);
-            $allowedEnd = Carbon::parse($start->format('Y-m-d') . ' ' . $bookingEndTime);
-            
-            if ($start->format('H:i') < $allowedStart->format('H:i') || 
-                $end->format('H:i') > $allowedEnd->format('H:i')) {
-                return [
-                    'valid' => false,
-                    'message' => "สามารถจองได้ในช่วงเวลา {$bookingStartTime} - {$bookingEndTime} เท่านั้น"
-                ];
-            }
-        }
-
         // ตรวจสอบวันหยุด
         $holidays = Setting::get('booking_holidays', []);
         if (is_string($holidays)) {

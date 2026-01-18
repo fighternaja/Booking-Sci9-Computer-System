@@ -170,69 +170,6 @@ class ExportController extends Controller
     }
 
     /**
-     * ส่งออกข้อมูลการจองเป็น PDF (JSON format - ต้องใช้ library เช่น DomPDF)
-     */
-    public function exportBookingsPdf(Request $request): JsonResponse
-    {
-        $user = Auth::user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $query = Booking::with(['user', 'room']);
-
-        // Filters
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('from_date')) {
-            $query->whereDate('start_time', '>=', $request->from_date);
-        }
-
-        if ($request->has('to_date')) {
-            $query->whereDate('end_time', '<=', $request->to_date);
-        }
-
-        if ($request->has('room_id')) {
-            $query->where('room_id', $request->room_id);
-        }
-
-        $bookings = $query->orderBy('start_time', 'desc')->get();
-
-        // Format data for PDF
-        $data = [
-            'title' => 'รายงานการจองห้อง',
-            'generated_at' => Carbon::now()->format('d/m/Y H:i:s'),
-            'total' => $bookings->count(),
-            'bookings' => $bookings->map(function($booking) {
-                return [
-                    'id' => $booking->id,
-                    'user' => $booking->user->name ?? '',
-                    'email' => $booking->user->email ?? '',
-                    'room' => $booking->room->name ?? '',
-                    'start_time' => $booking->start_time ? $booking->start_time->format('d/m/Y H:i') : '',
-                    'end_time' => $booking->end_time ? $booking->end_time->format('d/m/Y H:i') : '',
-                    'purpose' => $booking->purpose,
-                    'status' => $this->getStatusThai($booking->status),
-                    'cancellation_reason' => $booking->cancellation_reason ?? '',
-                    'rejection_reason' => $booking->rejection_reason ?? '',
-                    'approval_reason' => $booking->approval_reason ?? ''
-                ];
-            })
-        ];
-
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-            'message' => 'ข้อมูลพร้อมส่งออก (JSON format - ใช้ library เช่น DomPDF สำหรับ PDF)'
-        ]);
-    }
-
-    /**
      * ส่งออกรายงานการจอง (สรุปข้อมูล)
      */
     public function exportBookingReport(Request $request): JsonResponse
@@ -265,7 +202,11 @@ class ExportController extends Controller
                 'cancelled' => $bookings->where('status', 'cancelled')->count(),
             ],
             'by_room' => $bookings->groupBy('room_id')->map(function($roomBookings) {
-                $room = $roomBookings->first()->room;
+                $firstBooking = $roomBookings->first();
+                if (!$firstBooking || !$firstBooking->room) {
+                    return null;
+                }
+                $room = $firstBooking->room;
                 return [
                     'room_name' => $room->name ?? '',
                     'total' => $roomBookings->count(),
@@ -274,9 +215,13 @@ class ExportController extends Controller
                     'rejected' => $roomBookings->where('status', 'rejected')->count(),
                     'cancelled' => $roomBookings->where('status', 'cancelled')->count(),
                 ];
-            })->values(),
+            })->filter()->values(),
             'by_user' => $bookings->groupBy('user_id')->map(function($userBookings) {
-                $user = $userBookings->first()->user;
+                $firstBooking = $userBookings->first();
+                if (!$firstBooking || !$firstBooking->user) {
+                    return null;
+                }
+                $user = $firstBooking->user;
                 return [
                     'user_name' => $user->name ?? '',
                     'user_email' => $user->email ?? '',
@@ -286,7 +231,7 @@ class ExportController extends Controller
                     'rejected' => $userBookings->where('status', 'rejected')->count(),
                     'cancelled' => $userBookings->where('status', 'cancelled')->count(),
                 ];
-            })->values(),
+            })->filter()->values(),
             'generated_at' => Carbon::now()->format('Y-m-d H:i:s')
         ];
 

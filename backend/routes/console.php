@@ -14,6 +14,10 @@ Schedule::command('bookings:auto-cancel')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('bookings:send-reminders')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
 Schedule::call(function () {
     WaitlistController::processWaitlists();
 })

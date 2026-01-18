@@ -6,10 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\AuditLog;
+use App\Models\Setting;
 use App\Services\BookingRestrictionService;
+use App\Mail\BookingCreated;
+use App\Mail\BookingApproved;
+use App\Mail\BookingRejected;
+use App\Mail\BookingCancelled;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
 {
@@ -36,18 +42,57 @@ class BookingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'room_id' => 'required|exists:rooms,id',
-            'start_time' => 'required|date|after:now',
-            'end_time' => 'required|date|after:start_time',
-            'purpose' => 'required|string|max:255',
-            'notes' => 'nullable|string',
-            'requires_checkin' => 'nullable|boolean',
-            'auto_cancel_minutes' => 'nullable|integer|min:5|max:60'
-        ]);
+        try {
+            $request->validate([
+                'room_id' => 'required|exists:rooms,id',
+                'start_time' => 'required|date',
+                'end_time' => 'required|date|after:start_time',
+                'purpose' => 'required|string|max:255',
+                'notes' => 'nullable|string',
+                'requires_checkin' => 'nullable|boolean',
+                'auto_cancel_minutes' => 'nullable|integer|min:5|max:60'
+            ]);
 
-        $room = Room::findOrFail($request->room_id);
-        $user = Auth::user();
+            // ตรวจสอบว่าเวลาเริ่มต้นต้องเป็นอนาคต (ใช้ Carbon เพื่อจัดการ timezone ได้ดีกว่า)
+            try {
+                $startTime = \Carbon\Carbon::parse($request->start_time);
+                $endTime = \Carbon\Carbon::parse($request->end_time);
+            } catch (\Exception $e) {
+                \Log::error('Error parsing datetime in booking store: ' . $e->getMessage(), [
+                    'start_time' => $request->start_time,
+                    'end_time' => $request->end_time
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'รูปแบบวันที่และเวลาไม่ถูกต้อง: ' . $e->getMessage()
+                ], 400);
+            }
+            
+            $now = \Carbon\Carbon::now();
+            
+            if ($startTime->lte($now)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'เวลาเริ่มต้นต้องเป็นอนาคต กรุณาเลือกเวลาที่ยังไม่ผ่านไป'
+                ], 400);
+            }
+
+            if ($endTime->lte($startTime)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'
+                ], 400);
+            }
+
+            $room = Room::findOrFail($request->room_id);
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'กรุณาเข้าสู่ระบบก่อน'
+                ], 401);
+            }
         
         // ตรวจสอบข้อจำกัดและกฎเกณฑ์
         if ($user->role === 'admin') {
@@ -74,15 +119,35 @@ class BookingController extends Controller
         }
         
         // Check for conflicts (ตรวจสอบทั้ง approved และ pending bookings)
+        // ตรวจสอบกรณีที่เวลาทับกันทั้งหมด:
+        // 1. การจองใหม่เริ่มก่อนการจองเดิมเริ่ม แต่จบหลังการจองเดิมเริ่ม (ทับซ้อนด้านหน้า)
+        // 2. การจองใหม่เริ่มระหว่างการจองเดิม (ทับซ้อนตรงกลาง)
+        // 3. การจองใหม่เริ่มก่อนการจองเดิมจบ และจบหลังการจองเดิมจบ (ครอบคลุมทั้งหมด)
+        // 4. การจองใหม่เริ่มหลังการจองเดิมเริ่ม แต่จบก่อนการจองเดิมจบ (อยู่ภายใน)
         $conflict = Booking::where('room_id', $request->room_id)
             ->whereIn('status', ['approved', 'pending'])
-            ->where(function($query) use ($request) {
-                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                        ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                        ->orWhere(function($q) use ($request) {
-                            $q->where('start_time', '<=', $request->start_time)
-                            ->where('end_time', '>=', $request->end_time);
-                        });
+            ->where(function($query) use ($startTime, $endTime) {
+                $query
+                    // กรณีที่ 1: การจองใหม่เริ่มก่อนการจองเดิมเริ่ม แต่จบระหว่างการจองเดิม
+                    ->where(function($q) use ($startTime, $endTime) {
+                        $q->where('start_time', '<', $startTime)
+                          ->where('end_time', '>', $startTime);
+                    })
+                    // กรณีที่ 2: การจองใหม่เริ่มระหว่างการจองเดิม
+                    ->orWhere(function($q) use ($startTime, $endTime) {
+                        $q->where('start_time', '>=', $startTime)
+                          ->where('start_time', '<', $endTime);
+                    })
+                    // กรณีที่ 3: การจองเดิมครอบคลุมการจองใหม่ทั้งหมด
+                    ->orWhere(function($q) use ($startTime, $endTime) {
+                        $q->where('start_time', '<=', $startTime)
+                          ->where('end_time', '>=', $endTime);
+                    })
+                    // กรณีที่ 4: การจองใหม่ครอบคลุมการจองเดิมทั้งหมด
+                    ->orWhere(function($q) use ($startTime, $endTime) {
+                        $q->where('start_time', '>', $startTime)
+                          ->where('end_time', '<', $endTime);
+                    });
             })
             ->exists();
 
@@ -94,14 +159,13 @@ class BookingController extends Controller
         }
 
         // ตรวจสอบ role ของ user
-        $user = Auth::user();
         $status = ($user && $user->role === 'admin') ? 'approved' : 'pending';
 
         $booking = Booking::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'room_id' => $request->room_id,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'purpose' => $request->purpose,
             'notes' => $request->notes,
             'status' => $status,
@@ -118,6 +182,16 @@ class BookingController extends Controller
             "สร้างการจองห้อง #{$booking->id} - ห้อง: {$room->name}"
         );
 
+        // ส่งอีเมลแจ้งเตือน
+        if (Setting::get('email_notifications_enabled', false)) {
+            try {
+                $booking->load(['user', 'room']);
+                Mail::to($booking->user->email)->send(new BookingCreated($booking));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send booking created email: ' . $e->getMessage());
+            }
+        }
+
         $message = $status === 'approved' 
             ? 'จองห้องสำเร็จ' 
             : 'ส่งคำขอจองห้องแล้ว กรุณารอการอนุมัติจากผู้ดูแลระบบ';
@@ -127,6 +201,31 @@ class BookingController extends Controller
             'data' => $booking->load(['user', 'room']),
             'message' => $message
         ], 201);
+        
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ข้อมูลไม่ถูกต้อง',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ไม่พบข้อมูลที่ต้องการ'
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error creating booking: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาดในการจองห้อง: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show(Booking $booking): JsonResponse
@@ -268,6 +367,16 @@ class BookingController extends Controller
             "อนุมัติการจองห้อง #{$booking->id}" . ($request->approval_reason ? " - เหตุผล: {$request->approval_reason}" : '')
         );
 
+        // ส่งอีเมลแจ้งเตือน
+        if (Setting::get('email_notifications_enabled', false) && Setting::get('notification_on_approval', true)) {
+            try {
+                $booking->load(['user', 'room']);
+                Mail::to($booking->user->email)->send(new BookingApproved($booking));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send booking approved email: ' . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $booking->load(['user', 'room']),
@@ -304,6 +413,16 @@ class BookingController extends Controller
             $newValues,
             "ปฏิเสธการจองห้อง #{$booking->id} - เหตุผล: {$request->rejection_reason}"
         );
+
+        // ส่งอีเมลแจ้งเตือน
+        if (Setting::get('email_notifications_enabled', false) && Setting::get('notification_on_rejection', true)) {
+            try {
+                $booking->load(['user', 'room']);
+                Mail::to($booking->user->email)->send(new BookingRejected($booking));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send booking rejected email: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -374,16 +493,32 @@ class BookingController extends Controller
         }
         
         // ตรวจสอบความขัดแย้ง (ไม่นับการจองปัจจุบัน)
+        // ตรวจสอบกรณีที่เวลาทับกันทั้งหมด
         $conflict = Booking::where('room_id', $roomId)
             ->where('id', '!=', $booking->id)
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'pending'])
             ->where(function($query) use ($request) {
-                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                        ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                        ->orWhere(function($q) use ($request) {
-                            $q->where('start_time', '<=', $request->start_time)
-                            ->where('end_time', '>=', $request->end_time);
-                        });
+                $query
+                    // กรณีที่ 1: การจองใหม่เริ่มก่อนการจองเดิมเริ่ม แต่จบระหว่างการจองเดิม
+                    ->where(function($q) use ($request) {
+                        $q->where('start_time', '<', $request->start_time)
+                          ->where('end_time', '>', $request->start_time);
+                    })
+                    // กรณีที่ 2: การจองใหม่เริ่มระหว่างการจองเดิม
+                    ->orWhere(function($q) use ($request) {
+                        $q->where('start_time', '>=', $request->start_time)
+                          ->where('start_time', '<', $request->end_time);
+                    })
+                    // กรณีที่ 3: การจองเดิมครอบคลุมการจองใหม่ทั้งหมด
+                    ->orWhere(function($q) use ($request) {
+                        $q->where('start_time', '<=', $request->start_time)
+                          ->where('end_time', '>=', $request->end_time);
+                    })
+                    // กรณีที่ 4: การจองใหม่ครอบคลุมการจองเดิมทั้งหมด
+                    ->orWhere(function($q) use ($request) {
+                        $q->where('start_time', '>', $request->start_time)
+                          ->where('end_time', '<', $request->end_time);
+                    });
             })
             ->exists();
 
@@ -396,14 +531,60 @@ class BookingController extends Controller
 
         $oldValues = $booking->toArray();
         
+        // Parse datetime string ที่มี timezone offset และแปลงเป็น Carbon instance
+        // Carbon::parse() จะ parse ISO 8601 string ที่มี timezone offset ได้ถูกต้อง
+        try {
+            // Parse datetime string ที่มี timezone offset
+            // Carbon::parse() จะ parse ISO 8601 string ที่มี timezone offset และแปลงเป็น UTC อัตโนมัติ
+            // ตัวอย่าง: "2024-01-15T08:30:00+07:00" จะถูก parse และแปลงเป็น UTC "2024-01-15T01:30:00Z"
+            $startTime = \Carbon\Carbon::parse($request->start_time);
+            $endTime = \Carbon\Carbon::parse($request->end_time);
+            
+            // Carbon::parse() จะแปลงเป็น UTC อัตโนมัติเมื่อ parse ISO 8601 string ที่มี timezone offset
+            // แต่เพื่อความแน่ใจ ให้ตรวจสอบและแปลงเป็น UTC ถ้ายังไม่ใช่
+            // ใช้ copy() เพื่อไม่ให้เปลี่ยน instance เดิม
+            if ($startTime->timezone->getName() !== 'UTC') {
+                $startTime = $startTime->copy()->setTimezone('UTC');
+            }
+            if ($endTime->timezone->getName() !== 'UTC') {
+                $endTime = $endTime->copy()->setTimezone('UTC');
+            }
+            
+            \Log::info('Parsed datetime for reschedule', [
+                'original_start' => $request->start_time,
+                'original_end' => $request->end_time,
+                'parsed_start_utc' => $startTime->toIso8601String(),
+                'parsed_end_utc' => $endTime->toIso8601String(),
+                'start_timezone' => $startTime->timezone->getName(),
+                'end_timezone' => $endTime->timezone->getName(),
+                'start_time_formatted' => $startTime->format('Y-m-d H:i:s'),
+                'end_time_formatted' => $endTime->format('Y-m-d H:i:s'),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error parsing datetime in reschedule', [
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'รูปแบบวันที่และเวลาไม่ถูกต้อง: ' . $e->getMessage()
+            ], 400);
+        }
+        
         // อัปเดตการจอง
         $booking->update([
             'room_id' => $roomId,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'status' => 'approved' // อนุมัติอัตโนมัติเมื่อเลื่อนจอง
         ]);
-        $newValues = $booking->fresh()->toArray();
+        
+        // Refresh booking เพื่อให้ได้ข้อมูลล่าสุดพร้อม relationships
+        $booking->refresh();
+        $booking->load(['user', 'room']);
+        $newValues = $booking->toArray();
 
         // บันทึก audit log
         AuditLog::log(
@@ -525,6 +706,16 @@ class BookingController extends Controller
             "ยกเลิกการจองห้อง #{$booking->id}" . ($request->cancellation_reason ? " - เหตุผล: {$request->cancellation_reason}" : '')
         );
 
+        // ส่งอีเมลแจ้งเตือน
+        if (Setting::get('email_notifications_enabled', false)) {
+            try {
+                $booking->load(['user', 'room']);
+                Mail::to($booking->user->email)->send(new BookingCancelled($booking));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send booking cancelled email: ' . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $booking->load(['user', 'room']),
@@ -568,6 +759,16 @@ class BookingController extends Controller
                 $newValues,
                 "อนุมัติการจองห้อง #{$booking->id} (Bulk operation)"
             );
+
+            // ส่งอีเมลแจ้งเตือน
+            if (Setting::get('email_notifications_enabled', false) && Setting::get('notification_on_approval', true)) {
+                try {
+                    $booking->load(['user', 'room']);
+                    Mail::to($booking->user->email)->send(new BookingApproved($booking));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send booking approved email: ' . $e->getMessage());
+                }
+            }
             
             $approvedCount++;
         }
@@ -618,6 +819,16 @@ class BookingController extends Controller
                 $newValues,
                 "ปฏิเสธการจองห้อง #{$booking->id} (Bulk operation)"
             );
+
+            // ส่งอีเมลแจ้งเตือน
+            if (Setting::get('email_notifications_enabled', false) && Setting::get('notification_on_rejection', true)) {
+                try {
+                    $booking->load(['user', 'room']);
+                    Mail::to($booking->user->email)->send(new BookingRejected($booking));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send booking rejected email: ' . $e->getMessage());
+                }
+            }
             
             $rejectedCount++;
         }
@@ -673,6 +884,16 @@ class BookingController extends Controller
                 $newValues,
                 "ยกเลิกการจองห้อง #{$booking->id} (Bulk operation)"
             );
+
+            // ส่งอีเมลแจ้งเตือน
+            if (Setting::get('email_notifications_enabled', false)) {
+                try {
+                    $booking->load(['user', 'room']);
+                    Mail::to($booking->user->email)->send(new BookingCancelled($booking));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send booking cancelled email: ' . $e->getMessage());
+                }
+            }
             
             $cancelledCount++;
         }

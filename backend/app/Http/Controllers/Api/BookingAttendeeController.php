@@ -262,12 +262,22 @@ class BookingAttendeeController extends Controller
      */
     private function sendInvitationEmail(BookingAttendee $attendee)
     {
-        // TODO: Implement email sending
-        // ตัวอย่าง:
-        // Mail::to($attendee->email)->send(new BookingInvitation($attendee));
-        
-        // สำหรับตอนนี้แค่ log ไว้
-        \Log::info('Sending invitation email to: ' . $attendee->email);
+        if (!$attendee->email) {
+            \Log::warning('Cannot send invitation email: attendee has no email', ['attendee_id' => $attendee->id]);
+            return;
+        }
+
+        try {
+            $attendee->load(['booking.room', 'booking.user']);
+            Mail::to($attendee->email)->send(new \App\Mail\BookingInvitation($attendee));
+            \Log::info('Invitation email sent successfully', ['attendee_id' => $attendee->id, 'email' => $attendee->email]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send invitation email: ' . $e->getMessage(), [
+                'attendee_id' => $attendee->id,
+                'email' => $attendee->email,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
 

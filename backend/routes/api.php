@@ -149,7 +149,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Export routes ส่งออกข้อมูล
         Route::get('/admin/exports/bookings/csv', [ExportController::class, 'exportBookingsCsv']);
         Route::get('/admin/exports/bookings/excel', [ExportController::class, 'exportBookingsExcel']);
-        Route::get('/admin/exports/bookings/pdf', [ExportController::class, 'exportBookingsPdf']);
         Route::get('/admin/exports/bookings/report', [ExportController::class, 'exportBookingReport']);
     });
     
