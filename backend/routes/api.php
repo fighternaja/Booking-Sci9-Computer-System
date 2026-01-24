@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\BookingRestrictionController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\RecurringBookingController;
 use App\Http\Controllers\Api\BookingAttendeeController;
+use App\Http\Controllers\Api\EquipmentController;
+use App\Http\Controllers\Api\BookingEquipmentController;
+use App\Http\Controllers\Api\BookingSettingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -79,6 +82,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/booking-attendees/{attendee}/respond', [BookingAttendeeController::class, 'respond']);
     Route::post('/booking-attendees/{attendee}/checkin', [BookingAttendeeController::class, 'checkin']);
     Route::post('/booking-attendees/{attendee}/send-invitation', [BookingAttendeeController::class, 'sendInvitation']);
+    
+    // Equipment routes (User) อุปกรณ์
+    Route::get('/equipment', [EquipmentController::class, 'index']);
+    Route::get('/bookings/{booking}/equipment', [BookingEquipmentController::class, 'index']);
+    Route::post('/bookings/{booking}/equipment', [BookingEquipmentController::class, 'store']);
+    Route::put('/bookings/{booking}/equipment/{equipment}', [BookingEquipmentController::class, 'update']);
+    Route::delete('/bookings/{booking}/equipment/{equipment}', [BookingEquipmentController::class, 'destroy']);
     
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -145,6 +155,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/booking-restrictions/time', [BookingRestrictionController::class, 'updateTimeRestrictions']);
         Route::post('/admin/booking-restrictions/limits', [BookingRestrictionController::class, 'updateBookingLimits']);
         Route::post('/admin/booking-restrictions/roles', [BookingRestrictionController::class, 'updateRoleRestrictions']);
+
+        // Booking Import
+        Route::post('/admin/bookings/import', [BookingController::class, 'import']);
+        
+        // Equipment Management (Admin) จัดการอุปกรณ์
+        Route::get('/admin/equipment', [EquipmentController::class, 'index']);
+        Route::post('/admin/equipment', [EquipmentController::class, 'store']);
+        Route::get('/admin/equipment/stats', [EquipmentController::class, 'stats']);
+        Route::get('/admin/equipment/{equipment}', [EquipmentController::class, 'show']);
+        Route::put('/admin/equipment/{equipment}', [EquipmentController::class, 'update']);
+        Route::delete('/admin/equipment/{equipment}', [EquipmentController::class, 'destroy']);
+        
+        // Booking Settings จัดการการตั้งค่าการจอง
+        Route::get('/admin/settings/booking-restrictions', [BookingSettingController::class, 'index']);
+        Route::put('/admin/settings/booking-restrictions', [BookingSettingController::class, 'update']);
+        Route::post('/admin/settings/booking-restrictions/reset', [BookingSettingController::class, 'reset']);
         
         // Export routes ส่งออกข้อมูล
         Route::get('/admin/exports/bookings/csv', [ExportController::class, 'exportBookingsCsv']);

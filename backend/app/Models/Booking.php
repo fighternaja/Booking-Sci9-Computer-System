@@ -61,6 +61,18 @@ class Booking extends Model
         return $this->hasMany(BookingAttendee::class);
     }
 
+    public function equipment()
+    {
+        return $this->belongsToMany(Equipment::class, 'booking_equipment')
+            ->withPivot('quantity', 'status', 'notes')
+            ->withTimestamps();
+    }
+
+    public function bookingEquipment()
+    {
+        return $this->hasMany(BookingEquipment::class);
+    }
+
     /**
      * นับจำนวนผู้เข้าร่วมที่ยอมรับ
      */

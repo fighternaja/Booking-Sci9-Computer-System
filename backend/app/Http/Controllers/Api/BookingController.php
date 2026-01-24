@@ -907,4 +907,143 @@ class BookingController extends Controller
             ]
         ]);
     }
+
+    /**
+     * นำเข้าการจองจาก Excel
+     */
+    public function import(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || $user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        /*$request->validate([
+            'bookings' => 'required|array',
+            // 'bookings.*.room_id' => 'required|exists:rooms,id', // Removed strict check to allow name lookup
+            'bookings.*.start_time' => 'required|date',
+            // 'bookings.*.end_time' => 'required|date|after:bookings.*.start_time', // Disable strict time check
+            'bookings.*.end_time' => 'required|date',
+            'bookings.*.purpose' => 'required|string',
+            'bookings.*.user_name' => 'nullable|string',
+            'bookings.*.room_name' => 'nullable|string' // Added
+        ]);*/
+
+        $importedCount = 0;
+        $errors = [];
+
+        foreach ($request->bookings as $index => $bookingData) {
+            try {
+                // Resolved Room Logic
+                $roomId = $bookingData['room_id'] ?? null;
+                if (!$roomId && !empty($bookingData['room_name'])) {
+                    // Try to find room by name (insensitive search roughly)
+                    // Removing spaces and lowercase for better match
+                    $normalizedName = strtolower(str_replace(' ', '', $bookingData['room_name']));
+                    $allRooms = \App\Models\Room::all();
+                    foreach ($allRooms as $r) {
+                        if (strtolower(str_replace(' ', '', $r->name)) === $normalizedName) {
+                            $roomId = $r->id;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$roomId) {
+                    // Auto-create room if not found
+                    $roomName = $bookingData['room_name'] ?? 'Unknown Room';
+                    if (empty($bookingData['room_name'])) {
+                        $roomName = 'ห้องระบุไม่ได้'; // Default name
+                    }
+                    
+                    $newRoom = \App\Models\Room::create([
+                        'name' => $roomName,
+                        'description' => 'Imported Auto-created',
+                        'capacity' => 0, // Default
+                        'location' => 'Unknown'
+                    ]);
+                    $roomId = $newRoom->id;
+                }
+                
+                // Verify room exists (if ID was passed)
+                if (!\App\Models\Room::find($roomId)) {
+                     // Should not happen if auto-created, but safety check
+                     $errors[] = "แถวที่ " . ($index + 1) . ": ไม่พบห้อง ID: $roomId";
+                     continue;
+                }
+
+                // Find user by name or use current admin
+                $bookingUser = $user;
+                if (!empty($bookingData['user_name'])) {
+                    $foundUser = \App\Models\User::where('name', $bookingData['user_name'])->first();
+                    if ($foundUser) {
+                        $bookingUser = $foundUser;
+                    }
+                }
+
+                $startTime = \Carbon\Carbon::parse($bookingData['start_time']);
+                $endTime = \Carbon\Carbon::parse($bookingData['end_time']);
+
+                // Auto-fix start_time == end_time or end < start
+                if ($endTime->lte($startTime)) {
+                    $endTime = $startTime->copy()->addHour(); // Default to 1 hour duration
+                }
+
+                // Check conflict
+                $conflict = Booking::where('room_id', $roomId)
+                    ->whereIn('status', ['approved', 'pending'])
+                    ->where(function($query) use ($startTime, $endTime) {
+                        $query->where('start_time', '<', $endTime)
+                              ->where('end_time', '>', $startTime);
+                    })
+                    ->exists();
+
+                if ($conflict) {
+                    $errors[] = "แถวที่ " . ($index + 1) . ": ห้องไม่ว่างช่วงเวลา " . $startTime->format('H:i') . " - " . $endTime->format('H:i');
+                    continue;
+                }
+
+                $note = $bookingData['notes'] ?? '';
+                // Append original user name if we are booking as admin on behalf of someone else
+                if ($bookingUser->id === $user->id && !empty($bookingData['user_name']) && $bookingData['user_name'] !== $user->name) {
+                    $note .= ($note ? " | " : "") . "ผู้จอง: " . $bookingData['user_name'];
+                }
+
+                $booking = Booking::create([
+                    'user_id' => $bookingUser->id,
+                    'room_id' => $roomId,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'purpose' => $bookingData['purpose'],
+                    'notes' => $note,
+                    'status' => 'approved',
+                ]);
+
+                AuditLog::log(
+                    'created',
+                    $booking,
+                    null,
+                    $booking->toArray(),
+                    "นำเข้าการจองห้อง #{$booking->id}"
+                );
+
+                $importedCount++;
+
+            } catch (\Exception $e) {
+                $errors[] = "แถวที่ " . ($index + 1) . ": " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "นำเข้าสำเร็จ {$importedCount} รายการ",
+            'data' => [
+                'imported_count' => $importedCount,
+                'errors' => $errors
+            ]
+        ]);
+    }
 }
