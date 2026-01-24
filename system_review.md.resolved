@@ -351,7 +351,7 @@ php artisan queue:work --daemon --tries=3
 #### 3.7 SMS Notifications
 - [ ] เลือก SMS Provider
 - [ ] สร้าง SMS Service
-- [ ] เพิ่มเบอร์โทรใน User Profile
+- [ ] เพิ่มเบอร์โทรใน User Profile5555
 - [ ] ส่ง SMS เตือน
 
 #### 3.8 Push Notifications

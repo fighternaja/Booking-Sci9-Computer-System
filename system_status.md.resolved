@@ -153,15 +153,18 @@ php artisan queue:work
 
 **Backend มีแล้ว**: Bulk operations ใน BookingController
 
-#### 11. Audit Logs UI
-**ขาด**: หน้าแสดงประวัติการเปลี่ยนแปลง
+#### 11. Audit Logs UI ✅ เสร็จแล้ว
+**มีแล้ว**: หน้าแสดงประวัติการเปลี่ยนแปลง
 
-**ควรมี**:
-- แสดง Audit Logs
-- Filter ตาม User, Action, Date
-- รายละเอียดการเปลี่ยนแปลง
+**ฟีเจอร์**:
+- แสดง Audit Logs ในตาราง
+- Filter ตาม User, Action, Model Type, Date Range
+- รายละเอียดการเปลี่ยนแปลง (old vs new values)
+- Pagination (50 รายการต่อหน้า)
+- Expandable detail view
 
 **Backend มีแล้ว**: AuditLogController, AuditLog Model
+**Frontend มีแล้ว**: `/admin/audit-logs/page.js`
 
 #### 12. Enhanced Export
 **มีบางส่วน**: Excel export มีแล้ว

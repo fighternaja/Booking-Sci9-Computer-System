@@ -16,6 +16,7 @@ class ProfileController extends Controller
         if ($user->profile_picture && !filter_var($user->profile_picture, FILTER_VALIDATE_URL)) {
             $user->profile_picture = 'storage/' . $user->profile_picture;
         }
+
         return response()->json($user);
     }
 
@@ -27,6 +28,7 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20', // Add phone validation
             'password' => 'nullable|min:6',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',//เพิ่มรูปภาพประจำตัว
         ]);
@@ -36,6 +38,9 @@ class ProfileController extends Controller
         }
         if($request->has('email')) {
             $user->email = $request->email;
+        }
+        if($request->has('phone')) { // Update phone
+            $user->phone = $request->phone;
         }
         if($request->has('password')) {
             $user->password = Hash::make($request->password);

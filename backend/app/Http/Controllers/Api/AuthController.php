@@ -58,6 +58,11 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Update last login timestamp
+            $user = User::where('email', $request->email)->firstOrFail();
+            $user->last_login_at = now();
+            $user->save();
+
             // create a sanctum personal access token ตรวจสอบสิทธิ์การเข้าถึง API
             $token = $user->createToken('api-token')->plainTextToken;
 

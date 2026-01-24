@@ -28,8 +28,24 @@ class BookingController extends Controller
             $query->where('user_id', $user->id);
         }
 
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
+        }
+
+        if ($request->has('start_date') && $request->has('end_date')) {
+            // Filter by date range (overlapping logic or simple range)
+            // For general listing, start_time within range is usually sufficient
+            // But for schedule, we might want overlapping.
+            // Let's use simple start_time range for now as it's standard for lists.
+            $query->where(function($q) use ($request) {
+                $q->whereBetween('start_time', [$request->start_date, $request->end_date])
+                  ->orWhereBetween('end_time', [$request->start_date, $request->end_date]);
+            });
+        }
+
+        // Support limit for pagination-like behavior without full pagination UI yet
+        if ($request->has('limit')) {
+            $query->limit($request->limit);
         }
 
         $bookings = $query->orderBy('created_at', 'desc')->get();
