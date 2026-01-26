@@ -21,7 +21,8 @@ class BookingController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Booking::with(['user', 'room']);
+        // Eager load equipment to solve N+1 problem on frontend
+        $query = Booking::with(['user', 'room', 'equipment']);
 
         $user = Auth::user();
         if ($user && $user->role === 'user') {

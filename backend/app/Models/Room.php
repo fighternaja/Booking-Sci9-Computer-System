@@ -88,20 +88,6 @@ class Room extends Model
         return $statuses[$this->status] ?? $this->status;
     }
 
-    public static function getBuildings()
-    {
-        return [
-            'building_a' => 'อาคาร A',
-            'building_b' => 'อาคาร B', 
-            'building_c' => 'อาคาร C',
-            'building_d' => 'อาคาร D',
-            'main_building' => 'อาคารหลัก',
-            'library' => 'อาคารหอสมุด',
-            'science' => 'อาคารวิทยาศาสตร์',
-            'engineering' => 'อาคารวิศวกรรม'
-        ];
-    }
-
     public function getBuildingNameAttribute()
     {
         $buildings = self::getBuildings();

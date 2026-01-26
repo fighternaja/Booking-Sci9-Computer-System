@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/rooms/{room}/reviews', [ReviewController::class, 'getRoomReviews']);
     
     // Recurring Booking routes การจองซ้ำ
+    Route::get('/recurring-bookings/stats', [RecurringBookingController::class, 'stats']);
     Route::apiResource('recurring-bookings', RecurringBookingController::class);
     Route::post('/recurring-bookings/{recurringBooking}/generate', [RecurringBookingController::class, 'generateBookings']);
     
@@ -97,73 +98,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin routes การจัดการข้อมูลสำหรับผู้ดูแลระบบ
     Route::middleware('admin')->group(function () {
         // Admin dashboard กรอบข้อมูลสำหรับผู้ดูแลระบบ
-        Route::get('/admin/dashboard', function () {
-            $totalRooms = \App\Models\Room::count();
-            $totalBookings = \App\Models\Booking::count();
-            $pendingBookings = \App\Models\Booking::where('status', 'pending')->count();
-            $approvedBookings = \App\Models\Booking::where('status', 'approved')->count();
-            $rejectedBookings = \App\Models\Booking::where('status', 'rejected')->count();
-            $totalUsers = \App\Models\User::count();
-            $recentBookings = \App\Models\Booking::with(['user', 'room'])
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-
-            // Calculate additional stats (previously done on frontend)
-            $today = now()->startOfDay();
-            $weekAgo = now()->subDays(7);
-            $monthAgo = now()->subMonth();
-
-            $todayBookings = \App\Models\Booking::whereDate('start_time', today())->count();
-            $weekBookings = \App\Models\Booking::where('start_time', '>=', $weekAgo)->count();
-            $monthBookings = \App\Models\Booking::where('start_time', '>=', $monthAgo)->count();
-
-            // Most used rooms
-            $mostUsedRooms = \App\Models\Booking::select('room_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
-                ->with('room:id,name')
-                ->groupBy('room_id')
-                ->orderByDesc('count')
-                ->limit(5)
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'name' => $item->room ? $item->room->name : 'Unknown',
-                        'count' => $item->count
-                    ];
-                });
-
-            // Top users
-            $topUsers = \App\Models\Booking::select('user_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
-                ->with('user:id,name')
-                ->groupBy('user_id')
-                ->orderByDesc('count')
-                ->limit(5)
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'name' => $item->user ? $item->user->name : 'Unknown',
-                        'count' => $item->count
-                    ];
-                });
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'total_rooms' => $totalRooms,
-                    'total_bookings' => $totalBookings,
-                    'pending_bookings' => $pendingBookings,
-                    'approved_bookings' => $approvedBookings,
-                    'rejected_bookings' => $rejectedBookings,
-                    'total_users' => $totalUsers,
-                    'recent_bookings' => $recentBookings,
-                    'today_bookings' => $todayBookings,
-                    'week_bookings' => $weekBookings,
-                    'month_bookings' => $monthBookings,
-                    'most_used_rooms' => $mostUsedRooms,
-                    'top_users' => $topUsers
-                ]
-            ]);
-        });
+        Route::get('/admin/dashboard', [App\Http\Controllers\Api\DashboardController::class, 'index']);
+        Route::get('/admin/dashboard/charts', [App\Http\Controllers\Api\DashboardController::class, 'getChartsData']);
         
         // Admin room management จัดการห้อง
         Route::get('/admin/rooms', [RoomController::class, 'adminIndex']);

@@ -16,7 +16,7 @@ class RecurringBookingController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = RecurringBooking::with(['user', 'room']);
+        $query = RecurringBooking::with(['user:id,name,email', 'room:id,name,image,location']);
 
         $user = Auth::user();
         if ($user && $user->role === 'user') {
@@ -32,6 +32,29 @@ class RecurringBookingController extends Controller
         return response()->json([
             'success' => true,
             'data' => $recurringBookings
+        ]);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $query = RecurringBooking::query();
+        
+        if ($user && $user->role === 'user') {
+            $query->where('user_id', $user->id);
+        }
+
+        $total = $query->count();
+        $active = $query->clone()->where('is_active', true)->count();
+        $inactive = $query->clone()->where('is_active', false)->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $total,
+                'active' => $active,
+                'inactive' => $inactive
+            ]
         ]);
     }
 
