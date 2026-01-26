@@ -106,8 +106,45 @@ Route::middleware('auth:sanctum')->group(function () {
             $totalUsers = \App\Models\User::count();
             $recentBookings = \App\Models\Booking::with(['user', 'room'])
                 ->orderBy('created_at', 'desc')
-                ->limit(5)
+                ->limit(10)
                 ->get();
+
+            // Calculate additional stats (previously done on frontend)
+            $today = now()->startOfDay();
+            $weekAgo = now()->subDays(7);
+            $monthAgo = now()->subMonth();
+
+            $todayBookings = \App\Models\Booking::whereDate('start_time', today())->count();
+            $weekBookings = \App\Models\Booking::where('start_time', '>=', $weekAgo)->count();
+            $monthBookings = \App\Models\Booking::where('start_time', '>=', $monthAgo)->count();
+
+            // Most used rooms
+            $mostUsedRooms = \App\Models\Booking::select('room_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+                ->with('room:id,name')
+                ->groupBy('room_id')
+                ->orderByDesc('count')
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->room ? $item->room->name : 'Unknown',
+                        'count' => $item->count
+                    ];
+                });
+
+            // Top users
+            $topUsers = \App\Models\Booking::select('user_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+                ->with('user:id,name')
+                ->groupBy('user_id')
+                ->orderByDesc('count')
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->user ? $item->user->name : 'Unknown',
+                        'count' => $item->count
+                    ];
+                });
             
             return response()->json([
                 'success' => true,
@@ -118,7 +155,12 @@ Route::middleware('auth:sanctum')->group(function () {
                     'approved_bookings' => $approvedBookings,
                     'rejected_bookings' => $rejectedBookings,
                     'total_users' => $totalUsers,
-                    'recent_bookings' => $recentBookings
+                    'recent_bookings' => $recentBookings,
+                    'today_bookings' => $todayBookings,
+                    'week_bookings' => $weekBookings,
+                    'month_bookings' => $monthBookings,
+                    'most_used_rooms' => $mostUsedRooms,
+                    'top_users' => $topUsers
                 ]
             ]);
         });
@@ -136,15 +178,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/settings/{key}', [SettingController::class, 'update']);
         Route::delete('/admin/settings/{key}', [SettingController::class, 'destroy']);
         Route::get('/admin/settings/group/{group}', [SettingController::class, 'getByGroup']);
-        
-        // User management จัดการผู้ใช้
-        Route::get('/admin/users', [UserManagementController::class, 'index']);
-        Route::get('/admin/users/{user}', [UserManagementController::class, 'show']);
-        Route::put('/admin/users/{user}', [UserManagementController::class, 'update']);
-        Route::delete('/admin/users/{user}', [UserManagementController::class, 'destroy']);
-        Route::post('/admin/users/{user}/suspend', [UserManagementController::class, 'suspend']);
-        Route::post('/admin/users/{user}/unsuspend', [UserManagementController::class, 'unsuspend']);
-        Route::get('/admin/users/{user}/activity', [UserManagementController::class, 'getActivityLog']);
         
         // Audit logs ประวัติการเปลี่ยนแปลง
         Route::get('/admin/audit-logs', [AuditLogController::class, 'index']);
