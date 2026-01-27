@@ -551,31 +551,16 @@ class BookingController extends Controller
         // Parse datetime string ที่มี timezone offset และแปลงเป็น Carbon instance
         // Carbon::parse() จะ parse ISO 8601 string ที่มี timezone offset ได้ถูกต้อง
         try {
-            // Parse datetime string ที่มี timezone offset
-            // Carbon::parse() จะ parse ISO 8601 string ที่มี timezone offset และแปลงเป็น UTC อัตโนมัติ
-            // ตัวอย่าง: "2024-01-15T08:30:00+07:00" จะถูก parse และแปลงเป็น UTC "2024-01-15T01:30:00Z"
+            // Parse datetime string
+            // Use defaults or input timezone, do not force convert to UTC to avoid double shifting
             $startTime = \Carbon\Carbon::parse($request->start_time);
             $endTime = \Carbon\Carbon::parse($request->end_time);
-            
-            // Carbon::parse() จะแปลงเป็น UTC อัตโนมัติเมื่อ parse ISO 8601 string ที่มี timezone offset
-            // แต่เพื่อความแน่ใจ ให้ตรวจสอบและแปลงเป็น UTC ถ้ายังไม่ใช่
-            // ใช้ copy() เพื่อไม่ให้เปลี่ยน instance เดิม
-            if ($startTime->timezone->getName() !== 'UTC') {
-                $startTime = $startTime->copy()->setTimezone('UTC');
-            }
-            if ($endTime->timezone->getName() !== 'UTC') {
-                $endTime = $endTime->copy()->setTimezone('UTC');
-            }
             
             \Log::info('Parsed datetime for reschedule', [
                 'original_start' => $request->start_time,
                 'original_end' => $request->end_time,
-                'parsed_start_utc' => $startTime->toIso8601String(),
-                'parsed_end_utc' => $endTime->toIso8601String(),
-                'start_timezone' => $startTime->timezone->getName(),
-                'end_timezone' => $endTime->timezone->getName(),
-                'start_time_formatted' => $startTime->format('Y-m-d H:i:s'),
-                'end_time_formatted' => $endTime->format('Y-m-d H:i:s'),
+                'parsed_start' => $startTime->toIso8601String(),
+                'parsed_end' => $endTime->toIso8601String(),
             ]);
         } catch (\Exception $e) {
             \Log::error('Error parsing datetime in reschedule', [
