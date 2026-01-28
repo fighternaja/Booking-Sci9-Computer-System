@@ -1048,4 +1048,50 @@ class BookingController extends Controller
             ]
         ]);
     }
+    /**
+     * ล้างข้อมูลการจองตามช่วงเวลา
+     */
+    public function clear(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || $user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date', // Removed after_or_equal for simplicity in clearing
+            'room_id' => 'nullable|exists:rooms,id'
+        ]);
+
+        $query = Booking::whereBetween('start_time', [
+            $request->start_date . ' 00:00:00',
+            $request->end_date . ' 23:59:59'
+        ]);
+
+        if ($request->room_id) {
+            $query->where('room_id', $request->room_id);
+        }
+
+        $count = $query->count();
+        $query->delete();
+
+        // Audit Log
+        AuditLog::log(
+            'deleted',
+            $user, // Log against the admin user performed the action
+            null,
+            null,
+            "ล้างข้อมูลการจองช่วงวันที่ {$request->start_date} ถึง {$request->end_date}" . ($request->room_id ? " (ห้อง ID: {$request->room_id})" : "") . " จำนวน $count รายการ"
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "ลบข้อมูลการจองจำนวน $count รายการเรียบร้อยแล้ว",
+            'deleted_count' => $count
+        ]);
+    }
 }

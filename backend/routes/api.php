@@ -127,6 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Booking Import
         Route::post('/admin/bookings/import', [BookingController::class, 'import']);
+        Route::post('/admin/bookings/clear', [BookingController::class, 'clear']);
         
         // Equipment Management (Admin) จัดการอุปกรณ์
         Route::get('/admin/equipment', [EquipmentController::class, 'index']);

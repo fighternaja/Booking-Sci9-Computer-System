@@ -48,8 +48,8 @@ class AuditLog extends Model
         return self::create([
             'user_id' => $userId ?? auth()->id(),
             'action' => $action,
-            'model_type' => get_class($model),
-            'model_id' => $model->id ?? null,
+            'model_type' => $model ? get_class($model) : null,
+            'model_id' => $model ? $model->id : null,
             'old_values' => $oldValues,
             'new_values' => $newValues,
             'description' => $description,
