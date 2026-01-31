@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Recurring Booking routes การจองซ้ำ
     Route::get('/recurring-bookings/stats', [RecurringBookingController::class, 'stats']);
     Route::apiResource('recurring-bookings', RecurringBookingController::class);
+    Route::post('/recurring-bookings/check-conflicts', [RecurringBookingController::class, 'checkConflicts']);
     Route::post('/recurring-bookings/{recurringBooking}/generate', [RecurringBookingController::class, 'generateBookings']);
     
     // Booking Attendee routes ผู้เข้าร่วม

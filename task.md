@@ -1,0 +1,25 @@
+# Task List
+
+- [x] Configure Scheduler in `app/Console/Kernel.php` <!-- id: 1 -->
+- [x] Implement Check-in Button in Frontend <!-- id: 2 -->
+    - [x] Verify Backend `checkin` API logic <!-- id: 3 -->
+    - [x] Update `my-bookings/page.js` with Check-in UI and logic <!-- id: 4 -->
+- [x] Enhance Reschedule Modal (Match Design) <!-- id: 5 -->
+    - [x] Implement availability check in modal <!-- id: 6 -->
+    - [x] Update UI to match screenshot <!-- id: 7 -->
+- [x] Implement Recurring Booking Wizard <!-- id: 8 -->
+    - [x] Analyze existing recurring logic <!-- id: 9 -->
+    - [x] Create Wizard UI (Pattern, Config, Preview) <!-- id: 10 -->
+    - [x] Update Backend for bulk checking <!-- id: 11 -->
+- [x] Add User Info to Booking Card <!-- id: 12 -->
+    - [x] Backend: Ensure user data is sent <!-- id: 13 -->
+    - [x] Frontend: Add User Info section to card <!-- id: 14 -->
+- [x] Add Login Success Popup <!-- id: 16 -->
+- [x] Fix Excel Export in Reports <!-- id: 17 -->
+    - [x] Locate frontend export trigger <!-- id: 18 -->
+    - [x] Update frontend export logic to include requested fields <!-- id: 19 -->
+- [x] Add Equipment Selection to Booking Modal <!-- id: 20 -->
+    - [x] Fetch available equipment in Modal <!-- id: 21 -->
+    - [x] Add Selection UI (Checkboxes) <!-- id: 22 -->
+    - [x] Update Submit logic to send equipment_ids <!-- id: 23 -->
+- [ ] Setup Notifications (Future) <!-- id: 15 -->

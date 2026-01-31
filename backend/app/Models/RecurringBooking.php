@@ -193,5 +193,97 @@ class RecurringBooking extends Model
     {
         return $date->copy()->addDay();
     }
+
+    /**
+     * Preview การจอง (ตรวจสอบวันที่และสถานะโดยไม่บันทึกลงฐานข้อมูล)
+     */
+    public function previewBookings($untilDate = null)
+    {
+        $until = $untilDate ? Carbon::parse($untilDate) : ($this->end_date ? Carbon::parse($this->end_date) : Carbon::now()->addMonths(3));
+        $start = Carbon::parse($this->start_date);
+        $occurrences = 0;
+        $previewResults = [];
+
+        while ($start->lte($until) && ($this->max_occurrences === null || $occurrences < $this->max_occurrences)) {
+            $shouldCreate = false;
+            $nextDate = null;
+
+            switch ($this->recurrence_type) {
+                case 'daily':
+                    $shouldCreate = true;
+                    $nextDate = $start->copy()->addDays($this->interval);
+                    break;
+
+                case 'weekly':
+                    if ($this->days_of_week && in_array($start->dayOfWeek, $this->days_of_week)) {
+                        $shouldCreate = true;
+                    }
+                    $nextDate = $start->copy()->addWeeks($this->interval);
+                    break;
+
+                case 'monthly':
+                    if ($this->day_of_month && $start->day == $this->day_of_month) {
+                        $shouldCreate = true;
+                    }
+                    $nextDate = $start->copy()->addMonths($this->interval);
+                    break;
+
+                case 'custom':
+                    $shouldCreate = $this->checkCustomPattern($start);
+                    $nextDate = $this->getNextCustomDate($start);
+                    break;
+            }
+
+            if ($shouldCreate) {
+                // ตรวจสอบความขัดแย้ง
+                $startTimeStr = is_string($this->start_time) ? $this->start_time : 
+                    (is_object($this->start_time) ? $this->start_time->format('H:i:s') : $this->start_time);
+                $endTimeStr = is_string($this->end_time) ? $this->end_time : 
+                    (is_object($this->end_time) ? $this->end_time->format('H:i:s') : $this->end_time);
+                
+                $startDateTime = Carbon::parse($start->format('Y-m-d') . ' ' . $startTimeStr);
+                $endDateTime = Carbon::parse($start->format('Y-m-d') . ' ' . $endTimeStr);
+
+                $conflictingBooking = Booking::where('room_id', $this->room_id)
+                    ->whereIn('status', ['approved', 'pending'])
+                    ->where(function($query) use ($startDateTime, $endDateTime) {
+                        $query->whereBetween('start_time', [$startDateTime, $endDateTime])
+                            ->orWhereBetween('end_time', [$startDateTime, $endDateTime])
+                            ->orWhere(function($q) use ($startDateTime, $endDateTime) {
+                                $q->where('start_time', '<=', $startDateTime)
+                                    ->where('end_time', '>=', $endDateTime);
+                            });
+                    })
+                    ->with('user:id,name,email') // Load user info for conflict details
+                    ->first();
+
+                $result = [
+                    'date' => $start->format('Y-m-d'),
+                    'start_time' => $startDateTime->format('Y-m-d H:i:s'),
+                    'end_time' => $endDateTime->format('Y-m-d H:i:s'),
+                    'is_available' => !$conflictingBooking,
+                ];
+
+                if ($conflictingBooking) {
+                    $result['conflict'] = [
+                        'booking_id' => $conflictingBooking->id,
+                        'user_name' => $conflictingBooking->user->name ?? 'Unknown',
+                        'purpose' => $conflictingBooking->purpose
+                    ];
+                }
+
+                $previewResults[] = $result;
+                $occurrences++;
+            }
+
+            $start = $nextDate;
+            // Prevent infinite loop if nextDate is not advancing
+            if ($start->lte($prevDate = $start->copy()->subDay())) {
+                 $start->addDay();
+            }
+        }
+
+        return $previewResults;
+    }
 }
 

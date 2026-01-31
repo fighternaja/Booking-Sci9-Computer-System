@@ -231,5 +231,48 @@ class RecurringBookingController extends Controller
             'message' => 'สร้างการจอง ' . count($generatedBookings) . ' ครั้งสำเร็จ'
         ]);
     }
+
+
+    /**
+     * ตรวจสอบความขัดแย้งสำหรับการจองซ้ำ (Preview)
+     */
+    public function checkConflicts(Request $request): JsonResponse
+    {
+        $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+            'recurrence_type' => 'required|in:daily,weekly,monthly,custom',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after:start_date',
+            'days_of_week' => 'nullable|array',
+            'day_of_month' => 'nullable|integer',
+            'interval' => 'nullable|integer',
+        ]);
+
+        // สร้าง instance ชั่วคราว (ยังไม่ save ลง DB)
+        $recurringBooking = new RecurringBooking($request->all());
+        $recurringBooking->user_id = Auth::id(); // สมมติUserปัจจุบัน
+
+        // ดึงข้อมูล Preview
+        $previewResults = $recurringBooking->previewBookings($request->end_date);
+
+        // สรุปผล
+        $total = count($previewResults);
+        $available = count(array_filter($previewResults, fn($r) => $r['is_available']));
+        $conflicts = $total - $available;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'summary' => [
+                    'total' => $total,
+                    'available' => $available,
+                    'conflicts' => $conflicts
+                ],
+                'dates' => $previewResults
+            ]
+        ]);
+    }
 }
 
