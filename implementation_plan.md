@@ -1,47 +1,35 @@
-# Recurring Booking Wizard Implementation Plan
+# การปรับปรุงรายงานผู้ดูแลระบบ: มุมมองรายวัน, รายเดือน, รายปี
 
-## Goal
-Implement a user-friendly "Wizard" UI for creating recurring bookings (e.g., "Every Monday for 3 months") with a conflict preview feature.
+## เป้าหมาย
+พัฒนาระบบรายงานให้ครอบคลุมยิ่งขึ้น โดยแยกการแสดงผลข้อมูลเป็นแบบ รายวัน (Daily), รายเดือน (Monthly), และ รายปี (Yearly) ซึ่งในแต่ละมุมมองจะประกอบด้วย:
+- ตารางสรุป (รายการการจอง)
+- กราฟแท่ง/กราฟเส้น (แนวโน้มการจอง)
+- กราฟวงกลม (สัดส่วนการใช้งาน)
 
-## 1. Backend Changes
-- **New Endpoint**: `POST /api/recurring-bookings/check-conflicts`
-- **Controller**: `RecurringBookingController.php`
-    - Add `checkConflicts(Request $request)` method.
-    - Logic: Simulate booking generation based on pattern, check availability for each date, and return a list of:
-        - `valid_dates`: Dates that can be booked.
-        - `conflicting_dates`: Dates that have conflicts (with reason/booking info).
+## สิ่งที่ต้องให้ผู้ใช้งานพิจารณา
+> [!NOTE]
+> การเปลี่ยนแปลงนี้จะปรับเปลี่ยนหน้า "รายงาน" (Reports) เดิม ให้มีแท็บหรือเมนู Dropdown สำหรับเลือกโหมดการแสดงผล (รายวัน/รายเดือน/รายปี)
 
-## 2. Frontend Changes
-- **New Component**: `components/RecurringBookingWizard.js`
-    - **UI Structure**: Multi-step modal.
-        - **Step 1: Pattern**: Select Weekly/Monthly/Daily.
-        - **Step 2: Configuration**:
-            - Week days selector (Mon-Sun).
-            - Time range (Start/End).
-            - Duration (End date or Number of occurrences).
-        - **Step 3: Preview & Conflict Check**:
-            - Call `check-conflicts` API.
-            - Display list/calendar of dates.
-            - Show Summary: "Total 12 bookings. 10 Available, 2 Conflict".
-            - Option to "Book only available" or "Back to adjust".
-        - **Step 4: Book**:
-            - Enter Purpose/Notes.
-            - Confirm booking.
-- **Integration**:
-    - Add "Book Multiple Days" (จองหลายวัน/แบบต่อเนื่อง) button in `BookRoomPage` (`app/rooms/[id]/book/page.js`) or `BookingCalendar` header.
+## รายละเอียดการเปลี่ยนแปลง
 
-## Verification Plan
-### Automated Tests
-- Test `checkConflicts` API with:
-    - No conflict scenario.
-    - Partial conflict scenario (some dates taken).
-    - Full conflict scenario.
+### Frontend (User Interface)
+#### [แก้ไข] [admin/reports/page.js](file:///d:/booking/frontend/app/admin/reports/page.js)
+- เพิ่ม State สำหรับ `viewMode` ('daily', 'monthly', 'yearly')
+- เพิ่มตัวเลือกวันที่ (Date Picker) ที่เปลี่ยนรูปแบบตาม `viewMode` ที่เลือก
+- สร้างระบบกรองข้อมูล (Filter Logic) เพื่อคัดแยกข้อมูล `allBookings` ตามช่วงเวลาที่เลือก
+- คำนวณสถิติ (ยอดรวม, อนุมัติแล้ว ฯลฯ) ใหม่แบบ Real-time จากข้อมูลที่กรองแล้ว
+- ส่งข้อมูลที่กรองแล้วไปยังกราฟต่างๆ เพื่อแสดงผล
 
-### Manual Verification
-1. Open "Book Room" page.
-2. Click "Recurring Booking".
-3. Select "Weekly" -> "Mon, Wed" -> "Next 3 Months".
-4. View Preview: Ensure dates are correct.
-5. Create conflict manually (open another tab, book one of those Mondays).
-6. Refresh Preview: Confirm that specific Monday shows as "Conflict".
-7. Proceed to Book: Verify that multiple bookings are created in `My Bookings`.
+#### [แก้ไข] [admin/components/DashboardCharts.js](file:///d:/booking/frontend/app/admin/components/DashboardCharts.js)
+- ปรับแก้ Component ให้รับค่า `data` ผ่าน Props ได้ แทนที่จะดึงข้อมูลเองภายใน Component อย่างเดียว (เพื่อให้แสดงข้อมูลที่กรองแล้วจากหน้า Reports ได้)
+- **หรือ** สร้างไฟล์ใหม่ `ReportCharts.js` ถ้าหาก `DashboardCharts` มีความซับซ้อนหรือผูกติดกับหน้า Dashboard มากเกินไป
+
+## แผนการตรวจสอบ (Verification Plan)
+### การทดสอบแบบอัตโนมัติ (Automated Tests)
+- ไม่มี (เน้นการตรวจสอบ Logic บนหน้าจอ)
+
+### การทดสอบด้วยตนเอง (Manual Verification)
+1. **มุมมองรายวัน (Daily View):** เลือกวันที่ต้องการ -> ตรวจสอบว่าตารางแสดงเฉพาะการจองของวันนั้น และกราฟแสดงข้อมูลรายชั่วโมง
+2. **มุมมองรายเดือน (Monthly View):** เลือกเดือนที่ต้องการ -> ตรวจสอบว่าตารางแสดงการจองทั้งเดือน และกราฟแสดงข้อมูลรายวัน
+3. **มุมมองรายปี (Yearly View):** เลือกปีที่ต้องการ -> ตรวจสอบว่าตารางแสดงการจองทั้งปี และกราฟแสดงข้อมูลรายเดือน
+4. **การส่งออกข้อมูล (Export):** ตรวจสอบไฟล์ Excel ว่าข้อมูลที่ออกมาตรงกับช่วงเวลาที่เลือกกรองไว้

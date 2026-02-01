@@ -16,17 +16,18 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // ยกเลิกการจองอัตโนมัติ (ทุกนาที)
-        // ตรวจสอบการจองที่ต้องเช็คอินแต่ไม่มาตามเวลาที่กำหนด
+        // 1. ยกเลิกการจองอัตโนมัติ (ทุกนาที)
+        // ตรวจสอบการจองที่ต้องเช็คอินแต่ไม่มาตามเวลาที่กำหนด (auto_cancel_minutes)
         $schedule->command('bookings:auto-cancel')->everyMinute();
 
-        // ส่งอีเมลเตือน (ทุก 5 นาที)
+        // 2. ส่งอีเมลเตือน (ทุก 5 นาที)
         // ตรวจสอบทุก 5 นาทีเพื่อส่งเมลเตือนล่วงหน้า (ตามการตั้งค่า)
         $schedule->command('bookings:send-reminders')->everyFiveMinutes();
 
-        // ตรวจสอบรายชื่อรอ (ทุกนาที)
+        // 3. ตรวจสอบรายชื่อรอ (ทุกนาที)
         // ถ้ามีห้องว่าง จะจองให้อัตโนมัติสำหรับคนที่เปิด auto_book
         $schedule->call(function () {
+            // เรียกใช้ Static method จาก Controller
             WaitlistController::processWaitlists();
         })->everyMinute();
     }

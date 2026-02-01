@@ -54,12 +54,8 @@ class WaitlistController extends Controller
         $conflict = Booking::where('room_id', $request->room_id)
             ->whereIn('status', ['approved', 'pending'])
             ->where(function($query) use ($request) {
-                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                        ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                        ->orWhere(function($q) use ($request) {
-                            $q->where('start_time', '<=', $request->start_time)
-                            ->where('end_time', '>=', $request->end_time);
-                        });
+                $query->where('start_time', '<', $request->end_time)
+                      ->where('end_time', '>', $request->start_time);
             })
             ->exists();
 
@@ -162,13 +158,9 @@ class WaitlistController extends Controller
         // ตรวจสอบว่าห้องว่างหรือไม่
         $conflict = Booking::where('room_id', $waitlist->room_id)
             ->whereIn('status', ['approved', 'pending'])
-            ->where(function($query) use ($waitlist) {
-                $query->whereBetween('start_time', [$waitlist->start_time, $waitlist->end_time])
-                        ->orWhereBetween('end_time', [$waitlist->start_time, $waitlist->end_time])
-                        ->orWhere(function($q) use ($waitlist) {
-                            $q->where('start_time', '<=', $waitlist->start_time)
-                            ->where('end_time', '>=', $waitlist->end_time);
-                        });
+             ->where(function($query) use ($waitlist) {
+                $query->where('start_time', '<', $waitlist->end_time)
+                      ->where('end_time', '>', $waitlist->start_time);
             })
             ->exists();
 
@@ -219,12 +211,8 @@ class WaitlistController extends Controller
             $conflict = Booking::where('room_id', $waitlist->room_id)
                 ->whereIn('status', ['approved', 'pending'])
                 ->where(function($query) use ($waitlist) {
-                    $query->whereBetween('start_time', [$waitlist->start_time, $waitlist->end_time])
-                            ->orWhereBetween('end_time', [$waitlist->start_time, $waitlist->end_time])
-                            ->orWhere(function($q) use ($waitlist) {
-                                $q->where('start_time', '<=', $waitlist->start_time)
-                                ->where('end_time', '>=', $waitlist->end_time);
-                            });
+                    $query->where('start_time', '<', $waitlist->end_time)
+                          ->where('end_time', '>', $waitlist->start_time);
                 })
                 ->exists();
 
