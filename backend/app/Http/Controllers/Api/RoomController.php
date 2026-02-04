@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class RoomController extends Controller
 {
@@ -115,77 +117,127 @@ class RoomController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'capacity' => 'required|integer|min:1',
-            'location' => 'required|string|max:255',
-            'amenities' => 'nullable|array',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'capacity' => 'required|integer|min:1',
+                'location' => 'required|string|max:255',
+                'amenities' => 'nullable|array',
+                'image' => 'nullable|file|max:5120' // 5MB
+            ]);
 
-        $roomData = $request->except('image');
-        
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('rooms', 'public');
-            $roomData['image'] = $imagePath;
+            $roomData = $request->except('image');
+            
+            if ($request->hasFile('image')) {
+                $fileUploadService = new FileUploadService();
+                $uploadResult = $fileUploadService->uploadImage(
+                    $request->file('image'),
+                    'rooms',
+                    true // สร้าง thumbnail
+                );
+                $roomData['image'] = $uploadResult['path'];
+            }
+
+            $room = Room::create($roomData);
+
+            // แก้ไข URL ของรูปภาพ
+            if ($room->image) {
+                $room->image = 'storage/' . $room->image;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $room,
+                'message' => 'สร้างห้องสำเร็จ'
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 400);
         }
-
-        $room = Room::create($roomData);
-
-        // แก้ไข URL ของรูปภาพ
-        if ($room->image) {
-            $room->image = 'storage/' . $room->image;
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $room,
-            'message' => 'Room created successfully'
-        ], 201);
     }
 
     public function update(Request $request, Room $room): JsonResponse
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'capacity' => 'sometimes|integer|min:1',
-            'location' => 'sometimes|string|max:255',
-            'amenities' => 'nullable|array',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'sometimes|boolean'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'description' => 'nullable|string',
+                'capacity' => 'sometimes|integer|min:1',
+                'location' => 'sometimes|string|max:255',
+                'amenities' => 'nullable|array',
+                'image' => 'nullable|file|max:5120', // 5MB
+                'is_active' => 'sometimes|boolean'
+            ]);
 
-        $roomData = $request->except('image');
-        
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('rooms', 'public');
-            $roomData['image'] = $imagePath;
+            $roomData = $request->except('image');
+            
+            if ($request->hasFile('image')) {
+                $fileUploadService = new FileUploadService();
+                
+                // ลบรูปภาพเก่า
+                if ($room->image) {
+                    $fileUploadService->deleteFile($room->image);
+                    // ลบ thumbnail ด้วย
+                    $thumbnailPath = dirname($room->image) . '/thumbnails/' . basename($room->image);
+                    $fileUploadService->deleteFile($thumbnailPath);
+                }
+                
+                // อัปโหลดรูปภาพใหม่
+                $uploadResult = $fileUploadService->uploadImage(
+                    $request->file('image'),
+                    'rooms',
+                    true // สร้าง thumbnail
+                );
+                $roomData['image'] = $uploadResult['path'];
+            }
+
+            $room->update($roomData);
+
+            // แก้ไข URL ของรูปภาพ
+            if ($room->image) {
+                $room->image = 'storage/' . $room->image;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $room,
+                'message' => 'อัปเดตห้องสำเร็จ'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 400);
         }
-
-        $room->update($roomData);
-
-        // แก้ไข URL ของรูปภาพ
-        if ($room->image) {
-            $room->image = 'storage/' . $room->image;
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $room,
-            'message' => 'Room updated successfully'
-        ]);
     }
 
     public function destroy(Room $room): JsonResponse
     {
-        $room->delete();
+        try {
+            // ลบรูปภาพถ้ามี
+            if ($room->image) {
+                $fileUploadService = new FileUploadService();
+                $fileUploadService->deleteFile($room->image);
+                // ลบ thumbnail ด้วย
+                $thumbnailPath = dirname($room->image) . '/thumbnails/' . basename($room->image);
+                $fileUploadService->deleteFile($thumbnailPath);
+            }
+            
+            $room->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Room deleted successfully'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'ลบห้องสำเร็จ'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 400);
+        }
     }
 
     public function checkAvailability(Request $request, Room $room): JsonResponse
