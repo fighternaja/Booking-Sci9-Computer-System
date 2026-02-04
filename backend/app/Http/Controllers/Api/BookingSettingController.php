@@ -12,7 +12,7 @@ class BookingSettingController extends Controller
     /**
      * Get all booking restrictions
      */
-    public function index(): JsonResponse
+    public function index()
     {
         try {
             $settings = BookingSetting::getAll();
@@ -37,7 +37,7 @@ class BookingSettingController extends Controller
     /**
      * Update booking restrictions
      */
-    public function update(Request $request): JsonResponse
+    public function update(Request $request)
     {
         try {
             $validated = $request->validate([
@@ -89,7 +89,7 @@ class BookingSettingController extends Controller
     /**
      * Reset to default settings
      */
-    public function reset(): JsonResponse
+    public function reset()
     {
         try {
             $defaults = BookingSetting::getDefaults();

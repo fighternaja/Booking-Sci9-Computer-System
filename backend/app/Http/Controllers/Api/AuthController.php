@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
+    public function register(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -43,7 +43,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(Request $request)
     {
         try {
             $request->validate([
@@ -85,7 +85,7 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request)
     {
         // revoke current access token (if using sanctum) ยกเลิกการเข้าถึง API
         $user = Auth::user();
@@ -101,7 +101,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function me(Request $request): JsonResponse
+    public function me(Request $request)
     {
         $user = Auth::user();
         if (!$user) {

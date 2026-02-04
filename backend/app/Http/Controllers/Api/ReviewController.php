@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ReviewController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = Review::with(['user', 'room', 'booking']);
 
@@ -37,7 +37,7 @@ class ReviewController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $request->validate([
             'room_id' => 'required|exists:rooms,id',
@@ -108,7 +108,7 @@ class ReviewController extends Controller
         ], 201);
     }
 
-    public function show(Review $review): JsonResponse
+    public function show(Review $review)
     {
         if (!$review->is_visible && $review->user_id !== Auth::id()) {
             $user = Auth::user();
@@ -126,7 +126,7 @@ class ReviewController extends Controller
         ]);
     }
 
-    public function update(Request $request, Review $review): JsonResponse
+    public function update(Request $request, Review $review)
     {
         $user = Auth::user();
         
@@ -153,7 +153,7 @@ class ReviewController extends Controller
         ]);
     }
 
-    public function destroy(Review $review): JsonResponse
+    public function destroy(Review $review)
     {
         $user = Auth::user();
         
@@ -176,7 +176,7 @@ class ReviewController extends Controller
     /**
      * ดึงข้อมูลรีวิวและคะแนนเฉลี่ยของห้อง
      */
-    public function getRoomReviews(Room $room): JsonResponse
+    public function getRoomReviews(Room $room)
     {
         $reviews = Review::where('room_id', $room->id)
             ->where('is_visible', true)

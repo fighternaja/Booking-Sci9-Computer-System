@@ -9,7 +9,12 @@ use Illuminate\Http\JsonResponse;
 
 class StatsController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * Get system statistics
+     * 
+     * @return JsonResponse
+     */
+    public function index()
     {
         $totalRooms = Room::where('is_active', true)->count();
         $totalUsers = User::count();

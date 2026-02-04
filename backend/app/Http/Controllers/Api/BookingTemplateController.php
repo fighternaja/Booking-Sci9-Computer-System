@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class BookingTemplateController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = BookingTemplate::with(['user', 'room'])
             ->where('user_id', Auth::id());
@@ -26,7 +26,7 @@ class BookingTemplateController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -63,7 +63,7 @@ class BookingTemplateController extends Controller
         ], 201);
     }
 
-    public function show(BookingTemplate $bookingTemplate): JsonResponse
+    public function show(BookingTemplate $bookingTemplate)
     {
         if ($bookingTemplate->user_id !== Auth::id()) {
             return response()->json([
@@ -78,7 +78,7 @@ class BookingTemplateController extends Controller
         ]);
     }
 
-    public function update(Request $request, BookingTemplate $bookingTemplate): JsonResponse
+    public function update(Request $request, BookingTemplate $bookingTemplate)
     {
         if ($bookingTemplate->user_id !== Auth::id()) {
             return response()->json([
@@ -114,7 +114,7 @@ class BookingTemplateController extends Controller
         ]);
     }
 
-    public function destroy(BookingTemplate $bookingTemplate): JsonResponse
+    public function destroy(BookingTemplate $bookingTemplate)
     {
         if ($bookingTemplate->user_id !== Auth::id()) {
             return response()->json([
@@ -134,7 +134,7 @@ class BookingTemplateController extends Controller
     /**
      * จองห้องด้วยเทมเพลต
      */
-    public function bookFromTemplate(Request $request, BookingTemplate $bookingTemplate): JsonResponse
+    public function bookFromTemplate(Request $request, BookingTemplate $bookingTemplate)
     {
         if ($bookingTemplate->user_id !== Auth::id()) {
             return response()->json([

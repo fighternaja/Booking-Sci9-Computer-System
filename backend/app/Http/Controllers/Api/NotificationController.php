@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $user = Auth::user();
         if (!$user) {
@@ -111,7 +111,7 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function markAsRead(Request $request, $id): JsonResponse
+    public function markAsRead(Request $request, $id)
     {
         $user = Auth::user();
         if (!$user) {

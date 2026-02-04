@@ -109,7 +109,7 @@ class ExportController extends Controller
     /**
      * ส่งออกข้อมูลการจองเป็น Excel (JSON format - ต้องใช้ library เช่น PhpSpreadsheet)
      */
-    public function exportBookingsExcel(Request $request): JsonResponse
+    public function exportBookingsExcel(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -172,7 +172,7 @@ class ExportController extends Controller
     /**
      * ส่งออกรายงานการจอง (สรุปข้อมูล)
      */
-    public function exportBookingReport(Request $request): JsonResponse
+    public function exportBookingReport(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {

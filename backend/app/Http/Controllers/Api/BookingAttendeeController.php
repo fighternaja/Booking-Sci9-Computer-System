@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Mail;
 
 class BookingAttendeeController extends Controller
 {
-    public function index(Request $request, Booking $booking): JsonResponse
+    public function index(Request $request, Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -31,7 +31,7 @@ class BookingAttendeeController extends Controller
         ]);
     }
 
-    public function store(Request $request, Booking $booking): JsonResponse
+    public function store(Request $request, Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -97,7 +97,7 @@ class BookingAttendeeController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Booking $booking, BookingAttendee $attendee): JsonResponse
+    public function update(Request $request, Booking $booking, BookingAttendee $attendee)
     {
         $user = Auth::user();
         
@@ -136,7 +136,7 @@ class BookingAttendeeController extends Controller
         ]);
     }
 
-    public function destroy(Booking $booking, BookingAttendee $attendee): JsonResponse
+    public function destroy(Booking $booking, BookingAttendee $attendee)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -157,7 +157,7 @@ class BookingAttendeeController extends Controller
     /**
      * ตอบรับ/ปฏิเสธการเชิญ
      */
-    public function respond(Request $request, BookingAttendee $attendee): JsonResponse
+    public function respond(Request $request, BookingAttendee $attendee)
     {
         $user = Auth::user();
         
@@ -196,7 +196,7 @@ class BookingAttendeeController extends Controller
     /**
      * เช็คอินผู้เข้าร่วม
      */
-    public function checkin(BookingAttendee $attendee): JsonResponse
+    public function checkin(BookingAttendee $attendee)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -228,7 +228,7 @@ class BookingAttendeeController extends Controller
     /**
      * ส่งอีเมลเชิญผู้เข้าร่วม
      */
-    public function sendInvitation(BookingAttendee $attendee): JsonResponse
+    public function sendInvitation(BookingAttendee $attendee)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user') {

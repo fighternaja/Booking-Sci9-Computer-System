@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class RoomController extends Controller
 {
-    public function index(): JsonResponse
+    public function index()
     {
         try {
             // Query rooms that are active, excluding 'general' room type
@@ -52,7 +52,7 @@ class RoomController extends Controller
         }
     }
 
-    public function getRoomTypes(): JsonResponse
+    public function getRoomTypes()
     {
         return response()->json([
             'success' => true,
@@ -60,7 +60,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function getStatuses(): JsonResponse
+    public function getStatuses()
     {
         return response()->json([
             'success' => true,
@@ -68,7 +68,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function getBuildings(): JsonResponse
+    public function getBuildings()
     {
         return response()->json([
             'success' => true,
@@ -76,7 +76,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function show(Room $room): JsonResponse
+    public function show(Room $room)
     {
         $room->load(['bookings' => function($query) {
             $query  ->where('status', 'approved')
@@ -94,7 +94,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function adminIndex(): JsonResponse
+    public function adminIndex()
     {
         $rooms = Room::with(['bookings' => function($query) {
             $query  ->where('status', 'approved')
@@ -115,7 +115,7 @@ class RoomController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         try {
             $request->validate([
@@ -159,7 +159,7 @@ class RoomController extends Controller
         }
     }
 
-    public function update(Request $request, Room $room): JsonResponse
+    public function update(Request $request, Room $room)
     {
         try {
             $request->validate([
@@ -214,7 +214,7 @@ class RoomController extends Controller
         }
     }
 
-    public function destroy(Room $room): JsonResponse
+    public function destroy(Room $room)
     {
         try {
             // ลบรูปภาพถ้ามี
@@ -240,7 +240,7 @@ class RoomController extends Controller
         }
     }
 
-    public function checkAvailability(Request $request, Room $room): JsonResponse
+    public function checkAvailability(Request $request, Room $room)
     {
         try {
             $request->validate([
@@ -344,7 +344,7 @@ class RoomController extends Controller
         }
     }
 
-    public function getBookings(Request $request, Room $room): JsonResponse
+    public function getBookings(Request $request, Room $room)
     {
         $request->validate([
             'date' => 'nullable|date',

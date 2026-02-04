@@ -14,7 +14,7 @@ class BookingRestrictionController extends Controller
     /**
      * ดึงข้อมูลข้อจำกัดทั้งหมด
      */
-    public function index(): JsonResponse
+    public function index()
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -58,7 +58,7 @@ class BookingRestrictionController extends Controller
     /**
      * อัปเดตข้อจำกัดเวลา
      */
-    public function updateTimeRestrictions(Request $request): JsonResponse
+    public function updateTimeRestrictions(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -112,7 +112,7 @@ class BookingRestrictionController extends Controller
     /**
      * อัปเดตข้อจำกัดการจอง
      */
-    public function updateBookingLimits(Request $request): JsonResponse
+    public function updateBookingLimits(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -154,7 +154,7 @@ class BookingRestrictionController extends Controller
     /**
      * อัปเดตข้อจำกัดตามบทบาท
      */
-    public function updateRoleRestrictions(Request $request): JsonResponse
+    public function updateRoleRestrictions(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -192,7 +192,7 @@ class BookingRestrictionController extends Controller
     /**
      * ทดสอบข้อจำกัดสำหรับการจอง
      */
-    public function testRestrictions(Request $request): JsonResponse
+    public function testRestrictions(Request $request)
     {
         $user = Auth::user();
         if (!$user) {

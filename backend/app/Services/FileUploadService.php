@@ -30,7 +30,7 @@ class FileUploadService
      * @return array
      * @throws \Exception
      */
-    public function uploadImage(UploadedFile $file, string $directory = 'images', bool $createThumbnail = false): array
+    public function uploadImage($file, $directory = 'images', $createThumbnail = false)
     {
         // 1. ตรวจสอบว่าเป็นไฟล์รูปภาพจริง
         $this->validateImage($file);
@@ -74,7 +74,7 @@ class FileUploadService
      * @return array
      * @throws \Exception
      */
-    public function uploadDocument(UploadedFile $file, string $directory = 'documents'): array
+    public function uploadDocument($file, $directory = 'documents')
     {
         // 1. สร้างชื่อไฟล์ที่ปลอดภัย
         $filename = $this->generateSafeFilename($file);
@@ -103,7 +103,7 @@ class FileUploadService
      * @param string $path
      * @return bool
      */
-    public function deleteFile(string $path): bool
+    public function deleteFile($path)
     {
         if (Storage::disk('public')->exists($path)) {
             return Storage::disk('public')->delete($path);
@@ -117,7 +117,7 @@ class FileUploadService
      * @param UploadedFile $file
      * @throws \Exception
      */
-    private function validateImage(UploadedFile $file): void
+    private function validateImage($file)
     {
         if (!$file->isValid()) {
             throw new \Exception('ไฟล์ไม่ถูกต้อง');
@@ -135,7 +135,7 @@ class FileUploadService
      * @param array $allowedTypes
      * @throws \Exception
      */
-    private function validateMimeType(UploadedFile $file, array $allowedTypes): void
+    private function validateMimeType($file, $allowedTypes)
     {
         $mimeType = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
@@ -166,7 +166,7 @@ class FileUploadService
      * @param int $maxSize
      * @throws \Exception
      */
-    private function validateFileSize(UploadedFile $file, int $maxSize): void
+    private function validateFileSize($file, $maxSize)
     {
         if ($file->getSize() > $maxSize) {
             $maxSizeMB = $maxSize / (1024 * 1024);
@@ -180,7 +180,7 @@ class FileUploadService
      * @param UploadedFile $file
      * @throws \Exception
      */
-    private function validateImageContent(UploadedFile $file): void
+    private function validateImageContent($file)
     {
         // ใช้ getimagesize เพื่อตรวจสอบว่าเป็นรูปภาพจริง
         $imageInfo = @getimagesize($file->getRealPath());
@@ -202,7 +202,7 @@ class FileUploadService
      * @param UploadedFile $file
      * @return string
      */
-    private function generateSafeFilename(UploadedFile $file): string
+    private function generateSafeFilename($file)
     {
         // ใช้ timestamp และ random string เพื่อป้องกันการชนกันของชื่อไฟล์
         $extension = strtolower($file->getClientOriginalExtension());
@@ -223,7 +223,7 @@ class FileUploadService
      * @param string $directory
      * @return string
      */
-    private function createThumbnail(string $originalPath, string $directory): string
+    private function createThumbnail($originalPath, $directory)
     {
         $thumbnailDirectory = $directory . '/thumbnails';
         $filename = basename($originalPath);
@@ -252,7 +252,7 @@ class FileUploadService
      * @param int $width
      * @param int $height
      */
-    private function createThumbnailWithGD(string $source, string $destination, int $width, int $height): void
+    private function createThumbnailWithGD($source, $destination, $width, $height)
     {
         list($sourceWidth, $sourceHeight, $sourceType) = getimagesize($source);
         

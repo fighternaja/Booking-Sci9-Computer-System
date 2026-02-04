@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         // Eager load equipment to solve N+1 problem on frontend
         $query = Booking::with(['user', 'room', 'equipment']);
@@ -57,7 +57,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         try {
             $request->validate([
@@ -245,7 +245,7 @@ class BookingController extends Controller
         }
     }
 
-    public function show(Booking $booking): JsonResponse
+    public function show(Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -266,7 +266,7 @@ class BookingController extends Controller
     /**
      * ดึงประวัติการเปลี่ยนแปลงของ booking
      */
-    public function getAuditLogs(Booking $booking): JsonResponse
+    public function getAuditLogs(Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -287,7 +287,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function update(Request $request, Booking $booking): JsonResponse
+    public function update(Request $request, Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -325,7 +325,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function destroy(Booking $booking): JsonResponse
+    public function destroy(Booking $booking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $booking->user_id !== $user->id) {
@@ -354,7 +354,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function approve(Request $request, Booking $booking): JsonResponse
+    public function approve(Request $request, Booking $booking)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -401,7 +401,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function reject(Request $request, Booking $booking): JsonResponse
+    public function reject(Request $request, Booking $booking)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -448,7 +448,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function reschedule(Request $request, Booking $booking): JsonResponse
+    public function reschedule(Request $request, Booking $booking)
     {
         $user = Auth::user();
         
@@ -607,7 +607,7 @@ class BookingController extends Controller
     /**
      * เช็คอินการจอง
      */
-    public function checkin(Booking $booking): JsonResponse
+    public function checkin(Booking $booking)
     {
         $user = Auth::user();
         
@@ -668,7 +668,7 @@ class BookingController extends Controller
     /**
      * ยกเลิกการจอง
      */
-    public function cancel(Request $request, Booking $booking): JsonResponse
+    public function cancel(Request $request, Booking $booking)
     {
         $user = Auth::user();
         
@@ -728,7 +728,7 @@ class BookingController extends Controller
     /**
      * อนุมัติหลายการจองพร้อมกัน
      */
-    public function bulkApprove(Request $request): JsonResponse
+    public function bulkApprove(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -788,7 +788,7 @@ class BookingController extends Controller
     /**
      * ปฏิเสธหลายการจองพร้อมกัน
      */
-    public function bulkReject(Request $request): JsonResponse
+    public function bulkReject(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -848,7 +848,7 @@ class BookingController extends Controller
     /**
      * ยกเลิกหลายการจองพร้อมกัน
      */
-    public function bulkCancel(Request $request): JsonResponse
+    public function bulkCancel(Request $request)
     {
         $user = Auth::user();
         if (!$user) {
@@ -913,7 +913,7 @@ class BookingController extends Controller
     /**
      * นำเข้าการจองจาก Excel
      */
-    public function import(Request $request): JsonResponse
+    public function import(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {
@@ -1051,7 +1051,7 @@ class BookingController extends Controller
     /**
      * ล้างข้อมูลการจองตามช่วงเวลา
      */
-    public function clear(Request $request): JsonResponse
+    public function clear(Request $request)
     {
         $user = Auth::user();
         if (!$user || $user->role !== 'admin') {

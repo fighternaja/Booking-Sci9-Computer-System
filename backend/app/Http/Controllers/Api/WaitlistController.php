@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class WaitlistController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = Waitlist::with(['user', 'room']);
 
@@ -37,7 +37,7 @@ class WaitlistController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $request->validate([
             'room_id' => 'required|exists:rooms,id',
@@ -100,7 +100,7 @@ class WaitlistController extends Controller
         ], 201);
     }
 
-    public function show(Waitlist $waitlist): JsonResponse
+    public function show(Waitlist $waitlist)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $waitlist->user_id !== $user->id) {
@@ -116,7 +116,7 @@ class WaitlistController extends Controller
         ]);
     }
 
-    public function destroy(Waitlist $waitlist): JsonResponse
+    public function destroy(Waitlist $waitlist)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $waitlist->user_id !== $user->id) {
@@ -138,7 +138,7 @@ class WaitlistController extends Controller
     /**
      * ตรวจสอบและจองอัตโนมัติสำหรับรายชื่อรอ
      */
-    public function checkAndBook(Waitlist $waitlist): JsonResponse
+    public function checkAndBook(Waitlist $waitlist)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $waitlist->user_id !== $user->id) {

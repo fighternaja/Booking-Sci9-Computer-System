@@ -14,7 +14,7 @@ use Carbon\Carbon;
 
 class RecurringBookingController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = RecurringBooking::with(['user:id,name,email', 'room:id,name,image,location']);
 
@@ -35,7 +35,7 @@ class RecurringBookingController extends Controller
         ]);
     }
 
-    public function stats(Request $request): JsonResponse
+    public function stats(Request $request)
     {
         $user = Auth::user();
         $query = RecurringBooking::query();
@@ -58,7 +58,7 @@ class RecurringBookingController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $request->validate([
             'room_id' => 'required|exists:rooms,id',
@@ -137,7 +137,7 @@ class RecurringBookingController extends Controller
         ], 201);
     }
 
-    public function show(RecurringBooking $recurringBooking): JsonResponse
+    public function show(RecurringBooking $recurringBooking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $recurringBooking->user_id !== $user->id) {
@@ -155,7 +155,7 @@ class RecurringBookingController extends Controller
         ]);
     }
 
-    public function update(Request $request, RecurringBooking $recurringBooking): JsonResponse
+    public function update(Request $request, RecurringBooking $recurringBooking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $recurringBooking->user_id !== $user->id) {
@@ -180,7 +180,7 @@ class RecurringBookingController extends Controller
         ]);
     }
 
-    public function destroy(RecurringBooking $recurringBooking): JsonResponse
+    public function destroy(RecurringBooking $recurringBooking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $recurringBooking->user_id !== $user->id) {
@@ -208,7 +208,7 @@ class RecurringBookingController extends Controller
     /**
      * สร้างการจองเพิ่มเติมจาก recurring booking
      */
-    public function generateBookings(Request $request, RecurringBooking $recurringBooking): JsonResponse
+    public function generateBookings(Request $request, RecurringBooking $recurringBooking)
     {
         $user = Auth::user();
         if ($user && $user->role === 'user' && $recurringBooking->user_id !== $user->id) {
@@ -236,7 +236,7 @@ class RecurringBookingController extends Controller
     /**
      * ตรวจสอบความขัดแย้งสำหรับการจองซ้ำ (Preview)
      */
-    public function checkConflicts(Request $request): JsonResponse
+    public function checkConflicts(Request $request)
     {
         $request->validate([
             'room_id' => 'required|exists:rooms,id',

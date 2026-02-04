@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 
 class AuditLogController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = AuditLog::with('user');
 
@@ -46,7 +46,7 @@ class AuditLogController extends Controller
         ]);
     }
 
-    public function show(AuditLog $auditLog): JsonResponse
+    public function show(AuditLog $auditLog)
     {
         $auditLog->load('user');
 

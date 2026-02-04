@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class SettingController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $group = $request->get('group', 'all');
         
@@ -26,7 +26,7 @@ class SettingController extends Controller
         ]);
     }
 
-    public function show(string $key): JsonResponse
+    public function show(string $key)
     {
         $setting = Setting::where('key', $key)->first();
 
@@ -43,7 +43,7 @@ class SettingController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'key' => 'required|string|unique:settings,key',
@@ -76,7 +76,7 @@ class SettingController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, string $key): JsonResponse
+    public function update(Request $request, string $key)
     {
         $setting = Setting::where('key', $key)->first();
 
@@ -131,7 +131,7 @@ class SettingController extends Controller
         ]);
     }
 
-    public function destroy(string $key): JsonResponse
+    public function destroy(string $key)
     {
         $setting = Setting::where('key', $key)->first();
 
@@ -150,7 +150,7 @@ class SettingController extends Controller
         ]);
     }
 
-    public function getByGroup(string $group): JsonResponse
+    public function getByGroup(string $group)
     {
         $settings = Setting::getByGroup($group);
 
