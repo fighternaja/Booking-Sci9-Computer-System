@@ -27,7 +27,7 @@ return [
         'http://localhost:3001',
         'http://127.0.0.1:3001',
         // เพิ่ม Vercel URLs หลังจาก deploy
-        // 'https://your-app.vercel.app',
+        'https://booking-fightereieis-projects.vercel.app',
     ], $envOrigins),
 
     'allowed_origins_patterns' => [
