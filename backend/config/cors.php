@@ -24,11 +24,15 @@ return [
         'http://127.0.0.1:3000',
         'http://localhost:3001',
         'http://127.0.0.1:3001',
+        // เพิ่ม Vercel URLs หลังจาก deploy
+        // 'https://your-app.vercel.app',
     ],
 
     'allowed_origins_patterns' => [
         '/^http:\/\/localhost:\d+$/',
         '/^http:\/\/127\.0\.0\.1:\d+$/',
+        // รองรับ Vercel preview URLs
+        '/^https:\/\/.*\.vercel\.app$/',
     ],
 
     'allowed_headers' => ['*'],
