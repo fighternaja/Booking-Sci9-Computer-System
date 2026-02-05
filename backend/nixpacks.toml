@@ -3,8 +3,7 @@ nixPkgs = ["php81", "php81Packages.composer", "libmysqlclient"]
 
 [phases.install]
 cmds = [
-  "composer install --ignore-platform-reqs --no-dev --optimize-autoloader",
-  "npm install --production"
+  "composer install --ignore-platform-reqs --no-dev --optimize-autoloader"
 ]
 
 [phases.build]
