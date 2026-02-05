@@ -1,25 +1,6 @@
 <?php
 
-$originsEnv = trim((string) env('CORS_ALLOWED_ORIGINS', ''));
-
-// Defaults for local dev + Vercel pattern (see allowed_origins_patterns below)
-$allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-];
-
-// Allow overriding allowed origins via env:
-// - "*" to allow any origin (credentials will be disabled below)
-// - or a comma-separated list of origins: "https://a.vercel.app,https://b.com"
-if ($originsEnv !== '') {
-    if ($originsEnv === '*') {
-        $allowedOrigins = ['*'];
-    } else {
-        $allowedOrigins = array_values(array_filter(array_map('trim', explode(',', $originsEnv))));
-    }
-}
+$envOrigins = array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', ''))));
 
 return [
 
@@ -40,7 +21,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => $allowedOrigins,
+    'allowed_origins' => array_merge([
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3001',
+        // เพิ่ม Vercel URLs หลังจาก deploy
+        // 'https://your-app.vercel.app',
+    ], $envOrigins),
 
     'allowed_origins_patterns' => [
         '/^http:\/\/localhost:\d+$/',
@@ -55,7 +43,6 @@ return [
 
     'max_age' => 0,
 
-    // If allowing any origin ("*"), credentials must be disabled per CORS spec.
-    'supports_credentials' => $allowedOrigins !== ['*'],
+    'supports_credentials' => true,
 
 ];
