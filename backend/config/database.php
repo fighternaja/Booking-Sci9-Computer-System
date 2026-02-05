@@ -124,10 +124,9 @@ return [
     | your application. Using this information, we can determine which of
     | the migrations on disk haven't actually been run on the database.
     |
-    | Note: In Laravel 8, the migrations table name is hardcoded as 'migrations'.
-    | This config option is only available in Laravel 9+.
-    |
     */
+
+    'migrations' => 'migrations',
 
     /*
     |--------------------------------------------------------------------------
