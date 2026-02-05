@@ -1,6 +1,9 @@
 <?php
 
-$envOrigins = array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', ''))));
+$envOrigins = array_filter(array_map(function ($origin) {
+    $origin = trim($origin);
+    return $origin === '' ? '' : rtrim($origin, '/');
+}, explode(',', env('CORS_ALLOWED_ORIGINS', ''))));
 
 return [
 
@@ -26,8 +29,6 @@ return [
         'http://127.0.0.1:3000',
         'http://localhost:3001',
         'http://127.0.0.1:3001',
-        // เพิ่ม Vercel URLs หลังจาก deploy
-        'https://booking-ten-rosy.vercel.app/',
     ], $envOrigins),
 
     'allowed_origins_patterns' => [
