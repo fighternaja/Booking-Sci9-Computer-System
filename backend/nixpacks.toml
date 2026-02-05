@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["php81", "php81Packages.composer", "libmysqlclient"]
+
+[phases.install]
+cmds = [
+  "composer install --ignore-platform-reqs --no-dev --optimize-autoloader",
+  "npm install --production"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "php artisan serve --host=0.0.0.0 --port=$PORT"
+
